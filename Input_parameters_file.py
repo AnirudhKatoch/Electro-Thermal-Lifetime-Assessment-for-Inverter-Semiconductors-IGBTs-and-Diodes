@@ -6,11 +6,11 @@ class Input_parameters_class:
     def __init__(self):
 
         #self.pf = np.ones(3600) # [-] Inverter power factor with second resolution
-        #self.pf = np.array([0.1,0.1,1,-0.5,1])  # [-]
+        #self.pf = np.array([0.1,0.1,1,-0.5,0])  # [-]
         #self.pf = np.zeros(3600)  # [-] Inverter power factor with second resolution
-        self.pf = np.full(60, 1)  # Positive is capacitive and negative is inducitve
-        self.P = np.full(len(self.pf), 10000*1, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
-        self.Q = np.full(len(self.pf), 10000*1, dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
+        self.pf = np.full(600,0.35)  # Positive is capacitive and negative is inducitve
+        self.P = np.full(len(self.pf), 5000, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
+        self.Q = np.full(len(self.pf), 1000*3, dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
 
         # Validation check
 

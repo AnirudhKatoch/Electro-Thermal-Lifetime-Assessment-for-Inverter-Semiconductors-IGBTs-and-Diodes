@@ -156,6 +156,8 @@ TjI_all   = []
 TjD_all   = []
 all_rows = []
 
+start_time_new = time.time()
+
 for sec_idx, (Vs_i, Is_i, phi_i, Vdc_i, pf_i) in enumerate(zip(Vs, Is, phi, V_dc, pf)):
 
     t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, T_j_I, T_j_D, vs_inverter, is_inverter,Tbr_I,Tbr_D,Tbr_p,Tbr_s = Electro_thermal_behavior_class.Electro_thermal_behavior_shared_thermal_state(dt=dt,             # Input = Float
@@ -223,6 +225,9 @@ for sec_idx, (Vs_i, Is_i, phi_i, Vdc_i, pf_i) in enumerate(zip(Vs, Is, phi, V_dc
     })
     all_rows.append(df_1)
 
+end_time_new = time.time()
+print("Execution time loop:", end_time_new - start_time_new, "seconds")
+
     #print(sec_idx+1)
 
 P_leg_all = np.concatenate(P_leg_all)  # [W] total leg power over full run
@@ -259,6 +264,8 @@ Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
                       ar=ar )
 
 Life_I = Calculation_functions_class.Lifecycle_calculation(Nf_I, pf)
+
+
 
 
 if Life_I > IGBT_max_lifetime:
@@ -298,6 +305,8 @@ if Life_I > IGBT_max_lifetime:
     if isinstance(Life_I, (np.ndarray,)):
         Life_I = Life_I.item()
 
+
+
 #----------------------------------------#
 # Diode
 #----------------------------------------#
@@ -317,6 +326,7 @@ Nf_D = Calculation_functions_class.Cycles_to_failure(A=A,
                       ar=ar )
 
 Life_D = Calculation_functions_class.Lifecycle_calculation(Nf_D,pf)
+
 
 if Life_D > Diode_max_lifetime:
 
@@ -355,11 +365,23 @@ if Life_D > Diode_max_lifetime:
     if isinstance(Life_D, (np.ndarray,)):
         Life_D = Life_D.item()
 
+
+print('Life_I',Life_I)
+print('Life_D',Life_D)
+
+
 Life_switch = min(Life_I, Life_D)
+
+
+end_time = time.time()
+print("Execution time all code:", end_time - start_time, "seconds")
 
 '################################################################################################################################################################'
 'Monte carlo-based reliability assessment'
 '################################################################################################################################################################'
+
+
+
 
 #----------------------------------------#
 # Calculating delta T from mean T mean and heat cycle values
@@ -457,8 +479,7 @@ Life_period_I_normal_distribution = Nf_I_normal_distribution / (3600 * 24 * 365 
 Life_period_D_normal_distribution = Nf_D_normal_distribution / (3600 * 24 * 365 * (len(Nf_I)/len(pf)))
 Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distribution,Life_period_D_normal_distribution)
 
-end_time = time.time()
-print("Execution time:", end_time - start_time, "seconds")
+
 
 '################################################################################################################################################################'
 'Plotting Values and saving dataframe'
@@ -521,7 +542,6 @@ df_4 = pd.DataFrame({
     "Life_period_D_normal_distribution":Life_period_D_normal_distribution,
     "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution })
 
-Plotting_and_saving_dataframe_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures", Location_dataframes = "dataframe_files")
-
+#Plotting_and_saving_dataframe_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures", Location_dataframes = "dataframe_files")
 
 

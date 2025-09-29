@@ -1,46 +1,174 @@
-from Calculation_functions_file import Calculation_functions_class
 import numpy as np
+from numba import njit
+from Calculation_functions_file import Calculation_functions_class
 
-Calculation_functions = Calculation_functions_class()
+@njit(fastmath=True)
+def thermal_rollout_shared_thermal_state(P_I,      # Input = ndarray
+                     P_D,     # Input = ndarray
+                     P_leg,   # Input = ndarray
+                     alpha_I, # Input = ndarray
+                     r_I,     # Input = ndarray
+                     alpha_D, # Input = ndarray
+                     r_D,     # Input = ndarray
+                     alpha_p, # Input = ndarray
+                     r_paste, # Input = ndarray
+                     alpha_s, # Input = ndarray
+                     r_sink,  # Input = ndarray
+                     Tamb,    # Input = float
+                     Tbr_I,   # Input/Output = ndarray
+                     Tbr_D,   # Input/Output = ndarray
+                     Tbr_p,   # Input/Output = ndarray
+                     Tbr_s):  # Input/Output = ndarray
+
+    """
+
+    Advance thermal RC branch states over one 1-second simulation window.
+
+    This function is JIT-compiled with Numba for speed. It updates
+    the Foster thermal network for IGBT, diode, paste, and heatsink
+    branches given the instantaneous power losses.
+
+    Parameters
+    ----------
+    P_I : ndarray
+        Instantaneous IGBT power losses [W] (switching + conduction).
+    P_D : ndarray
+        Instantaneous diode power losses [W] (switching + conduction).
+    P_leg : ndarray
+        Instantaneous total leg power losses [W].
+    alpha_I : ndarray
+        Discrete decay factors exp(-dt/τ) for IGBT junction→case branches [-].
+    r_I : ndarray
+        Thermal resistances for IGBT junction→case branches [K/W].
+    alpha_D : ndarray
+        Discrete decay factors for diode junction→case branches [-].
+    r_D : ndarray
+        Thermal resistances for diode junction→case branches [K/W].
+    alpha_p : ndarray
+        Discrete decay factors for paste (case→sink) branches [-].
+    r_paste : ndarray
+        Thermal resistances for paste (case→sink) branches [K/W].
+    alpha_s : ndarray
+        Discrete decay factors for heatsink (sink→ambient) branches [-].
+    r_sink : ndarray
+        Thermal resistances for heatsink (sink→ambient) branches [K/W].
+    Tamb : float
+        Ambient temperature [K].
+    Tbr_I : ndarray
+        Initial Foster branch temperatures for IGBT junction→case [K].
+        Updated in-place and returned.
+    Tbr_D : ndarray
+        Initial Foster branch temperatures for diode junction→case [K].
+        Updated in-place and returned.
+    Tbr_p : ndarray
+        Initial temperature rise for paste (case→sink) [K].
+        Updated in-place and returned.
+    Tbr_s : ndarray
+        Initial Foster branch temperatures for heatsink (sink→ambient) [K].
+        Updated in-place and returned.
+
+    Returns
+    -------
+    T_j_I : ndarray
+        IGBT junction temperature trajectory over the 1 s window [K].
+    T_j_D : ndarray
+        Diode junction temperature trajectory over the 1 s window [K].
+    Tbr_I : ndarray
+        Final Foster branch temperatures for IGBT junction→case [K].
+    Tbr_D : ndarray
+        Final Foster branch temperatures for diode junction→case [K].
+    Tbr_p : ndarray
+        Final paste (case→sink) temperature rise [K].
+    Tbr_s : ndarray
+        Final Foster branch temperatures for heatsink (sink→ambient) [K].
+
+    """
+
+    n = P_I.size
+
+    T_j_I = np.empty(n, dtype=np.float64)
+    T_j_D = np.empty(n, dtype=np.float64)
+
+    # Precompute per-branch gains k = (1 - alpha) * r
+    kI = (1.0 - alpha_I) * r_I
+    kD = (1.0 - alpha_D) * r_D
+    kp = (1.0 - alpha_p) * r_paste
+    ks = (1.0 - alpha_s) * r_sink
+
+    for k in range(n):
+        # IGBT junction→case branches (driven by P_I[k])
+        for i in range(alpha_I.size):
+            Tbr_I[i] = Tbr_I[i] * alpha_I[i] + kI[i] * P_I[k]
+
+        # Diode junction→case branches (driven by P_D[k])
+        for i in range(alpha_D.size):
+            Tbr_D[i] = Tbr_D[i] * alpha_D[i] + kD[i] * P_D[k]
+
+        # Paste (case→sink) branches (driven by total leg power)
+        for i in range(alpha_p.size):
+            Tbr_p[i] = Tbr_p[i] * alpha_p[i] + kp[i] * P_leg[k]
+
+        # Heatsink (sink→ambient) branches (driven by total leg power)
+        for i in range(alpha_s.size):
+            Tbr_s[i] = Tbr_s[i] * alpha_s[i] + ks[i] * P_leg[k]
+
+        # Sums for junction temperatures
+        shared_rise = 0.0
+        for i in range(alpha_p.size):
+            shared_rise += Tbr_p[i]
+        for i in range(alpha_s.size):
+            shared_rise += Tbr_s[i]
+
+        sum_I = 0.0
+        for i in range(alpha_I.size):
+            sum_I += Tbr_I[i]
+        sum_D = 0.0
+        for i in range(alpha_D.size):
+            sum_D += Tbr_D[i]
+
+        T_j_I[k] = Tamb + shared_rise + sum_I
+        T_j_D[k] = Tamb + shared_rise + sum_D
+
+    return T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p, Tbr_s
 
 
 class Electro_thermal_behavior_class:
-
     @staticmethod
-
-    def Electro_thermal_behavior_shared_thermal_state(dt,       # Input = Float
-                        Vs,       # Input = Float, Originally = Array, Will go in loop
-                        Is,       # Input = Float, Originally = Array, Will go in loop
-                        phi,      # Input = Float, Originally = Array, Will go in loop
-                        omega,    # Input = Float
-                        M,        # Input = Float
-                        V_dc,     # Input = Float, Originally = Array, Will go in loop
-                        t_on,     # Input = Float
-                        t_off,    # Input = Float
-                        f_sw,     # Input = Float
-                        I_ref,    # Input = Float
-                        V_ref,    # Input = Float
-                        Err_D,    # Input = Float
-                        R_IGBT,   # Input = Float
-                        V_0_IGBT, # Input = Float
-                        pf,       # Input = Float, Originally = Array, Will go in loop
-                        R_D,      # Input = Float
-                        V_0_D,    # Input = Float
-                        alpha_I,  # Input = Array
-                        alpha_D,  # Input = Array
-                        alpha_p,  # Input = Array
-                        alpha_s,  # Input = Array
-                        r_I,      # Input = Array
-                        r_D,      # Input = Array
-                        r_paste,  # Input = Array
-                        r_sink,   # Input = Array
-                        Tamb,     # Input = Float
-                        Tbr_I,    # Input = Array
-                        Tbr_D,    # Input = Array
-                        Tbr_p,    # Input = Array
-                        Tbr_s):   # Input = Array
+    def Electro_thermal_behavior_shared_thermal_state(
+        dt,        # float
+        Vs,        # float
+        Is,        # float
+        phi,       # float
+        omega,     # float
+        M,         # float
+        V_dc,      # float
+        t_on,      # float
+        t_off,     # float
+        f_sw,      # float
+        I_ref,     # float
+        V_ref,     # float
+        Err_D,     # float
+        R_IGBT,    # float
+        V_0_IGBT,  # float
+        pf,        # float  (magnitude used in conduction losses)
+        R_D,       # float
+        V_0_D,     # float
+        alpha_I,   # ndarray
+        alpha_D,   # ndarray
+        alpha_p,   # ndarray
+        alpha_s,   # ndarray
+        r_I,       # ndarray
+        r_D,       # ndarray
+        r_paste,   # ndarray
+        r_sink,    # ndarray
+        Tamb,      # float
+        Tbr_I,     # ndarray
+        Tbr_D,     # ndarray
+        Tbr_p,     # ndarray
+        Tbr_s ):  # ndarray
 
         """
+        
         Simulate one-second electro-thermal behavior of a single inverter leg and return
         electrical waveforms, loss components and device junction temperatures.
 
@@ -155,59 +283,72 @@ class Electro_thermal_behavior_class:
 
         """
 
-        t = np.arange(0.0, 1.0, dt)            # Create an array of time instants [s] (1000 steps) from 0 to 1.0 second. This defines the simulation horizon for that particular pf, P and Q value.
+        # time vector for this 1-second window
+        t = np.arange(0.0, 1.0, dt, dtype=np.float64)  # Create an array of time instants [s] (1000 steps) from 0 to 1.0 second. This defines the simulation horizon for that particular pf, P and Q value.
 
-        vs_inverter, is_inverter = Calculation_functions.Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi, t=t, omega=omega)
-        m = Calculation_functions.Instantaneous_modulation(M=M,omega=omega,t=t,phi=phi)
-        is_I, is_D = Calculation_functions.IGBT_and_diode_current(Is=Is, t=t, m=m,omega=omega)
-        P_sw_I, P_sw_D = Calculation_functions.Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off, f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref, Err_D=Err_D)
-        P_con_I, P_con_D = Calculation_functions.Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT, M=M, pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
+        vs_inverter, is_inverter = Calculation_functions_class().Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi, t=t, omega=omega)
+        m                        = Calculation_functions_class().Instantaneous_modulation(M=M,omega=omega,t=t,phi=phi)
+        is_I, is_D               = Calculation_functions_class().IGBT_and_diode_current(Is=Is, t=t, m=m,omega=omega)
+        P_sw_I, P_sw_D           = Calculation_functions_class().Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off, f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref, Err_D=Err_D)
+        P_con_I, P_con_D         = Calculation_functions_class().Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT, M=M, pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
 
-        P_I = np.maximum(P_sw_I + P_con_I, 0.0) # [W] Total instantaneous IGBT power loss [W] = switching + conduction
-        P_D = np.maximum(P_sw_D + P_con_D, 0.0) # [W] Total instantaneous diode power loss [W] = switching + conduction
-        P_leg = P_I + P_D                           # [W] Total leg power loss [W] = combined IGBT + diode losses
+        P_I = np.maximum(P_sw_I + P_con_I, 0.0)   # [W] Total instantaneous IGBT power loss [W] = switching + conduction
+        P_D = np.maximum(P_sw_D + P_con_D, 0.0)   # [W] Total instantaneous diode power loss [W] = switching + conduction
+        P_leg = P_I + P_D                             # [W] Total leg power loss [W] = combined IGBT + diode losses
 
-        # Initialize arrays for storing junction temperature profiles
-        T_j_I = np.zeros_like(t, dtype=float)  # [K] IGBT junction temperature
-        T_j_D = np.zeros_like(t, dtype=float)  # [K] Diode junction temperature
+        # Ensure all arrays for the JIT kernel are float64 & contiguous
+        alpha_I = np.ascontiguousarray(alpha_I, dtype=np.float64)
+        alpha_D = np.ascontiguousarray(alpha_D, dtype=np.float64)
+        alpha_p = np.ascontiguousarray(alpha_p, dtype=np.float64)
+        alpha_s = np.ascontiguousarray(alpha_s, dtype=np.float64)
 
-        for k in range(len(t)):
+        r_I     = np.ascontiguousarray(r_I,     dtype=np.float64)
+        r_D     = np.ascontiguousarray(r_D,     dtype=np.float64)
+        r_paste = np.ascontiguousarray(r_paste, dtype=np.float64)
+        r_sink  = np.ascontiguousarray(r_sink,  dtype=np.float64)
 
-            # ----------------------------------------#
-            # Junction-to-case (j→c) thermal RC update
-            # ----------------------------------------#
+        Tbr_I   = np.ascontiguousarray(Tbr_I,   dtype=np.float64)
+        Tbr_D   = np.ascontiguousarray(Tbr_D,   dtype=np.float64)
+        Tbr_p   = np.ascontiguousarray(Tbr_p,   dtype=np.float64)
+        Tbr_s   = np.ascontiguousarray(Tbr_s,   dtype=np.float64)
 
-            # IGBT junction→case branches driven by IGBT power P_I
-            Tbr_I[:] = Tbr_I * alpha_I + (1.0 - alpha_I) * (r_I * P_I[k])
+        P_I   = np.ascontiguousarray(P_I,   dtype=np.float64)
+        P_D   = np.ascontiguousarray(P_D,   dtype=np.float64)
+        P_leg = np.ascontiguousarray(P_leg, dtype=np.float64)
 
-            # Diode junction→case branches driven by diode power P_D
-            Tbr_D[:] = Tbr_D * alpha_D + (1.0 - alpha_D) * (r_D * P_D[k])
+        # Advance thermal RC states over this 1-second window in compiled code
+        T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p, Tbr_s = thermal_rollout_shared_thermal_state(P_I=P_I,
+                                                                    P_D=P_D,
+                                                                    P_leg=P_leg,
+                                                                    alpha_I=alpha_I,
+                                                                    r_I=r_I,
+                                                                    alpha_D=alpha_D,
+                                                                    r_D=r_D,
+                                                                    alpha_p=alpha_p,
+                                                                    r_paste=r_paste,
+                                                                    alpha_s=alpha_s,
+                                                                    r_sink=r_sink,
+                                                                    Tamb = float(Tamb),
+                                                                    Tbr_I = Tbr_I.copy(),
+                                                                    Tbr_D = Tbr_D.copy(),
+                                                                    Tbr_p = Tbr_p.copy(),
+                                                                    Tbr_s = Tbr_s.copy())
 
-            # Paste (case→sink) driven by total leg power
-            Tbr_p[:] = Tbr_p * alpha_p + (1.0 - alpha_p) * (r_paste * P_leg[k])
-
-            # Heatsink branches (sink→ambient) also driven by total leg power
-            Tbr_s[:] = Tbr_s * alpha_s + (1.0 - alpha_s) * (r_sink * P_leg[k])
-
-            shared_rise = Tbr_p.sum() + Tbr_s.sum()
-            T_j_I[k] = Tamb + shared_rise + Tbr_I.sum()
-            T_j_D[k] = Tamb + shared_rise + Tbr_D.sum()
-
-
-        return (t,
-                m,
-                is_I,
-                is_D ,
-                P_sw_I,
-                P_sw_D,
-                P_con_I,
-                P_con_D,
-                P_leg,
-                T_j_I,
-                T_j_D,
-                vs_inverter,
-                is_inverter,
-                Tbr_I,
-                Tbr_D,
-                Tbr_p,
-                Tbr_s)
+        return (
+            t,
+            m,
+            is_I,
+            is_D,
+            P_sw_I,
+            P_sw_D,
+            P_con_I,
+            P_con_D,
+            P_leg,
+            T_j_I,
+            T_j_D,
+            vs_inverter,
+            is_inverter,
+            Tbr_I,
+            Tbr_D,
+            Tbr_p,
+            Tbr_s )

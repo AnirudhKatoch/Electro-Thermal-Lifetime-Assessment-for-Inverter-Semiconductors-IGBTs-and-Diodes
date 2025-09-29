@@ -1,0 +1,755 @@
+import numpy as np
+import warnings
+from mpmath import lambertw
+
+class Calculation_functions_class:
+
+    @staticmethod
+
+    def compute_power_flow_from_pf(P, Q, V_dc, pf,Vs):
+        """
+        Compute apparent power S, RMS current Is, and phase angle phi
+
+        Parameters
+        ----------
+        P : array
+            Active power per sec [W].
+        Q : array
+            Reactive power per sec [VAr].
+        V_dc : array
+             DC-side phase voltage per sec [V]
+        pf : array
+             Power factor per sec [-].
+        Vs : array
+             RMS AC-side phase voltage per sec [V]
+
+        Returns
+        -------
+        S : array
+            Apparent power per sample [VA].
+        Is : array
+            RMS current per sample [A].
+        phi : array
+            Phase angle between voltage and current per sample [rad]
+        P : ndarray of float
+            Active power after applying pf==0 rule (P set to 0 where pf == 0) [W].
+        Q : ndarray of float
+            Reactive power after consistency update (recomputed where pf ≠ 0) [VAr].
+        Vs : array
+             RMS AC-side phase voltage per sec [V]
+        """
+
+        S = np.zeros_like(pf, dtype=float)  # [VA] Inverter RMS apparent power
+        Is = np.zeros_like(pf, dtype=float)  # [A] Inverter RMS current
+        phi = np.zeros_like(pf, dtype=float)  # [rad] Phase angle
+
+        if Vs.size == 0:
+            Vs = V_dc/(2*np.sqrt(2))
+
+        else:
+            Vs_new = V_dc / (2 * np.sqrt(2))
+            indices = np.where(Vs > Vs_new)[0]
+
+            if indices.size > 0:
+                warnings.warn(
+                    f"Inverter AC RMS voltage exceeds the theoretical maximum limit "
+                    f"at time cycles {indices} s.",
+                    UserWarning
+                )
+
+
+
+        for i in range(len(pf)):
+            if pf[i] == 0:
+                P[i] = 0
+                S[i] = np.sqrt(P[i]**2 + Q[i]**2)
+                Is[i] = S[i] / Vs[i]
+                if S[i] == 0:
+                    phi[i] = 0
+                else:
+                    phi[i] = np.pi/2 if Q[i] > 0 else -np.pi/2
+            else:
+                S[i] = P[i] / abs(pf[i])
+                Is[i] = S[i] / Vs[i]
+                if pf[i] < 0:  # inductive
+                    phi[i] = -np.arccos(abs(pf[i]))
+                    Q[i] = - np.sqrt(S[i] ** 2 - P[i] ** 2)
+                else:          # capacitive
+                    phi[i] = np.arccos(abs(pf[i]))
+                    Q[i] = np.sqrt(S[i] ** 2 - P[i] ** 2)
+
+        return S, Is, phi, P, Q, Vs
+
+    @staticmethod
+    def Inverter_voltage_and_current(Vs, Is, phi, t, omega):
+        """
+
+        Compute instantaneous inverter voltage and current waveforms.
+
+        Parameters
+        ----------
+        Vs : float
+            RMS value of inverter AC-side phase voltage [V].
+        Is : float
+            RMS value of inverter AC-side output current [A].
+        phi : float
+            Phase angle between voltage and current [rad].
+            (negative = current lags voltage = inductive load,
+             positive = current leads voltage = capacitive load).
+        t : array
+            Time instant [s].
+        omega : float
+            Angular frequency of the grid (ω = 2πf) [rad/s].
+
+        Returns
+        -------
+        vs_inverter : array
+            Instantaneous inverter output voltage [V].
+        is_inverter : array
+            Instantaneous inverter output current [A].
+
+        """
+
+        vs_inverter = np.sqrt(2) * Vs * np.sin(omega * t + phi)
+        is_inverter = np.sqrt(2) * Is * np.sin(omega * t)
+
+        return vs_inverter, is_inverter
+
+    @staticmethod
+    def Instantaneous_modulation(M, omega, t, phi):
+
+        """
+        Calculate the inverter modulation function m(t).
+
+        Parameters
+        ----------
+        M : float
+            Modulation index of the inverter [-] (typically 0.8–1.0 for PV inverters).
+        omega : float
+            Angular frequency of the AC grid [rad/s] (ω = 2πf).
+        t : array
+            Time instant [s].
+        phi : float
+            Phase angle of the inverter output current relative to the voltage [rad].
+
+        Returns
+        -------
+        m : float
+                Instantaneous modulation function [-].
+
+        """
+
+        m = (M * np.sin(omega * t + phi) + 1) / 2
+
+        return m
+
+    @staticmethod
+    def IGBT_and_diode_current(Is, t, m, omega):
+
+        """
+        Calculate the instantaneous IGBT and diode currents in one inverter leg
+
+        Parameters
+        ----------
+        Is : float
+            RMS value of the inverter output current [A].
+        t : array
+            Time instant [s].
+        m : array
+            Instantaneous modulation function [-], typically between 0 and 1.
+
+        Returns
+        -------
+        is_I : array
+            Instantaneous IGBT current [A]. (Non-negative only, conduction blocked when negative.)
+        is_D : array
+            Instantaneous diode current [A]. (Non-negative only, conduction blocked when negative.)
+        """
+
+        base = np.sqrt(2) * Is * np.sin(omega * t) * m
+        is_I = np.maximum(base, 0)
+        is_D = np.maximum(-base, 0)
+
+        return is_I, is_D
+
+    @staticmethod
+    def Switching_losses(V_dc, is_I, t_on, t_off, f_sw, is_D, I_ref, V_ref, Err_D):
+
+        """
+        Calculate the IGBT and diode switching power losses.
+
+        Parameters
+        ----------
+        V_dc : float
+            DC-link voltage of the inverter [V].
+        is_I : array
+            Instantaneous current through the IGBT [A].
+        t_on : float
+            Effective IGBT turn-on time [s].
+        t_off : float
+            Effective IGBT turn-off time [s].
+        f_sw : float
+            Inverter switching frequency [Hz].
+        is_D : array
+            Instantaneous current through the diode [A].
+        I_ref : float
+            Reference test current for diode reverse recovery [A].
+        V_ref : float
+            Reference test voltage for diode reverse recovery [V].
+        Err_D : float
+            Reverse recovery energy per switching event for the diode [J].
+
+        Returns
+        -------
+        P_sw_I : array
+            Instantaneous IGBT switching power loss [W].
+        P_sw_D : array
+            Instantaneous diode switching power loss [W].
+
+        """
+
+        # IGBT
+
+        E_on_I = (np.sqrt(2) / (2 * np.pi)) * V_dc * is_I * t_on
+        E_off_I = (np.sqrt(2) / (2 * np.pi)) * V_dc * is_I * t_off
+        P_sw_I = (E_on_I + E_off_I) * f_sw
+        P_sw_I = np.maximum(P_sw_I, 0)
+
+        # Diode
+
+        P_sw_D = ((np.sqrt(2) / np.pi) * (is_D * V_dc) / (I_ref * V_ref)) * Err_D * f_sw
+        P_sw_D = np.maximum(P_sw_D, 0)
+
+        return P_sw_I, P_sw_D
+
+
+    @staticmethod
+    def Conduction_losses(is_I, R_IGBT, V_0_IGBT, M, pf, is_D, R_D, V_0_D):
+
+        """
+        Calculate conduction losses of the inverter’s IGBT and diode.
+
+        Parameters
+        ----------
+        is_I : array
+            Instantaneous value of the inverter output current flowing through the IGBT [A].
+        R_IGBT : float
+            Effective on-resistance of the IGBT conduction model [Ohm].
+        V_0_IGBT : float
+            Effective knee voltage of the IGBT [V].
+        M : float
+            Modulation index of the inverter [-].
+        pf : float
+            Power factor of inverter output current [-].
+            (negative = inductive load, current lags voltage;
+             positive = capacitive load, current leads voltage).
+        is_D : array
+            Instantaneous value of the inverter output current flowing through the diode [A].
+        R_D : float
+            Effective dynamic resistance of the diode [Ohm].
+        V_0_D : float
+            Effective forward knee voltage of the diode [V].
+
+        Returns
+        -------
+        P_con_I : array
+            Instantaneous conduction loss of the IGBT [W].
+        P_con_D : array
+            Instantaneous conduction loss of the diode [W].
+        """
+
+        # IGBT
+
+        P_con_I = (((is_I ** 2 / 4.0) * R_IGBT) + ((is_I / np.sqrt(2 * np.pi)) * V_0_IGBT) +
+                   ((((is_I ** 2 / 4.0) * (8 * M / (3 * np.pi)) * R_IGBT) + (
+                           (is_I / np.sqrt(2 * np.pi)) * (np.pi * M / 4.0) * V_0_IGBT)) * abs(pf)))
+        P_con_I = np.maximum(P_con_I, 0)
+
+        # Diode
+
+        P_con_D = ((((is_D ** 2 / 4.0) * R_D) + ((is_D / np.sqrt(2 * np.pi)) * V_0_D)) -
+                   ((((is_D ** 2 / 4.0)) * ((8 * M / (3 * np.pi)) * R_D)) + (
+                               (is_D / np.sqrt(2 * np.pi)) * (np.pi * M / 4.0) * V_0_D)) * abs(pf))
+        P_con_D = np.maximum(P_con_D, 0)
+
+        return P_con_I, P_con_D
+
+
+    @staticmethod
+    def Cycles_to_failure(A,             # Input = float
+                          alpha,         # Input = float
+                          beta1,         # Input = float
+                          beta0,         # Input = float
+                          C,             # Input = float
+                          gamma,         # Input = float
+                          fd,            # Input = float
+                          Ea,            # Input = float
+                          k_b,           # Input = float
+                          Tj_mean,       # Input = array
+                          delta_Tj,      # Input = array
+                          t_cycle_heat,  # Input = array
+                          ar):           # Input = float
+
+        """
+        Compute cycles-to-failure Nf from the multi-parameter lifetime model.
+
+        Parameters
+        ----------
+        A : float
+            Empirical scale factor [-].
+        alpha : float
+            Exponent on temperature swing ΔTj [-].
+        beta1 : float
+            Slope vs. ΔTj in the a_r exponent term [-].
+        beta0 : float
+            Intercept in the a_r exponent term [-].
+        C : float
+            Time-shape factor [-].
+        gamma : float
+            Time-shape exponent [-].
+        fd : float
+            Damage factor (duty/usage factor) [-].
+        Ea : float
+            Activation energy [J].  (Note: pass Joules, not eV.)
+        k_b : float
+            Boltzmann constant [J/K].
+        Tj_mean : array-like
+            Mean junction temperature per cycle T̄j [K].
+        delta_Tj : array-like
+            Junction temperature swing per cycle ΔTj [K].
+        t_cycle_heat : array-like
+            Heating duration per cycle t_h [s] (time from Tmin→Tmax).
+        ar : array-like
+            Average temperature rise rate a_r per cycle [K/s] (= ΔTj / t_h).
+
+        Returns
+        -------
+        Nf : ndarray
+            Cycles-to-failure estimate for each cycle [-].
+        """
+
+        if np.any(Tj_mean <= 0):
+            raise ValueError(
+                "Tj_mean contains 0 K or negative values, which is not physically possible. Check input data.")
+
+        Equation_1 = A
+
+        Equation_2 = (delta_Tj) ** alpha
+
+        Equation_3 = (ar) ** ((beta1 * delta_Tj) + beta0)
+
+        Equation_4 = (C + ((t_cycle_heat) ** gamma)) / (C + 1)
+
+        Equation_5 = np.exp(Ea / (k_b * Tj_mean))
+
+        Equation_6 = fd
+
+        Nf = Equation_1 * Equation_2 * Equation_3 * Equation_4 * Equation_5 * Equation_6
+
+        #if (Nf > 3600*24*365*50*30).any():
+        #    max_val = np.max(Nf)
+        #    Percentage_drop = 3600*24*365*50*30/max_val
+        #    Nf = Nf * Percentage_drop
+
+        return Nf
+
+    @staticmethod
+    def window_stats(temp, time_window, steps_per_sec, pf):
+
+        """
+         Compute window-based thermal statistics.
+
+         Parameters
+         ----------
+         temp : ndarray
+             Junction temperature time series (K).
+         time_window : int
+             Window length in seconds over which stats are computed.
+         steps_per_sec : int
+             Number of simulation steps per second (time resolution).
+         pf : ndarray
+             Power factor array, used to align time indices.
+
+         Returns
+         -------
+         mean_T : ndarray
+             Mean junction temperature in each window (K).
+         delta_T : ndarray
+             Temperature swing (Tmax - Tmin) per window (K).
+         t_cycle_heat : ndarray
+             Duration of each heating cycle within a window (s).
+         time_period_df2 : ndarray
+             Array of window time indices aligned with pf series.
+         """
+
+        n = len(temp)
+        window_size = int(round(time_window * steps_per_sec))
+        n_windows = n // window_size
+
+        data = temp[:n_windows * window_size].reshape(n_windows, window_size)
+
+        mean_T = data.mean(axis=1)
+
+        Tmax = data.max(axis=1)
+        Tmin = data.min(axis=1)
+        delta_T = Tmax - Tmin
+
+        idx_max = data.argmax(axis=1)
+        idx_min = data.argmin(axis=1)
+        t_cycle_heat = np.abs(idx_max - idx_min) / steps_per_sec
+
+        time_period_df2 = np.arange(0, len(pf), time_window)
+
+        return mean_T, delta_T, t_cycle_heat, time_period_df2
+
+    @staticmethod
+    def check_vce(overshoot_margin, V_dc, max_V_CE):
+        """
+        Check if collector–emitter voltage exceeds the maximum allowed value.
+
+        Parameters
+        ----------
+        overshoot_margin : float
+            Overshoot margin (fraction or percentage in decimal form).
+        V_dc : float or np.ndarray
+            DC link voltage (single value or array of values).
+        max_V_CE : float
+            Maximum allowed collector–emitter voltage.
+
+        Raises
+        ------
+        UserWarning
+            If the collector–emitter voltage exceeds max_V_CE.
+        """
+        V_CE = V_dc * (1 + overshoot_margin)
+
+        violations = np.where(V_CE > max_V_CE)[0]
+
+        if violations.size > 0:
+            warnings.warn(
+                f"Collector–emitter voltage exceeded!\n"
+                f"Maximum allowed: {max_V_CE}, but got values up to {V_CE.max()}.\n"
+                "Please reduce the DC voltage or update the IGBT specifications.\n"
+                f"Violations occurred at indices (time steps): {violations}",
+                UserWarning
+            )
+
+        return V_CE
+
+    @staticmethod
+
+    def check_igbt_diode_limits(
+            is_I, is_D, T_j_I, T_j_D,
+            max_IGBT_RMS_Current, max_IGBT_peak_Current,
+            max_Diode_RMS_Current, max_Diode_peak_Current,
+            max_IGBT_temperature, max_Diode_temperature,
+            sec_idx=0
+    ):
+        """
+        Check IGBT and Diode current and temperature limits.
+
+        Parameters
+        ----------
+        is_I : np.ndarray
+            IGBT current waveform.
+        is_D : np.ndarray
+            Diode current waveform.
+        T_j_I : np.ndarray
+            IGBT junction temperature (K).
+        T_j_D : np.ndarray
+            Diode junction temperature (K).
+        max_IGBT_RMS_Current : float
+            Maximum allowed IGBT RMS current (A).
+        max_IGBT_peak_Current : float
+            Maximum allowed IGBT peak current (A).
+        max_Diode_RMS_Current : float
+            Maximum allowed Diode RMS current (A).
+        max_Diode_peak_Current : float
+            Maximum allowed Diode peak current (A).
+        max_IGBT_temperature : float
+            Maximum allowed IGBT junction temperature (K).
+        max_Diode_temperature : float
+            Maximum allowed Diode junction temperature (K).
+        sec_idx : int, optional
+            Index or time step indicator for diagnostics (default=0).
+
+        Raises
+        ------
+        UserWarning
+            If any violation occurs.
+        """
+
+        # --- Compute RMS and Peak currents ---
+        I_rms_is_I = np.sqrt(np.mean(is_I ** 2))
+        I_peak_is_I = np.max(np.abs(is_I))
+        I_rms_is_D = np.sqrt(np.mean(is_D ** 2))
+        I_peak_is_D = np.max(np.abs(is_D))
+
+        # --- IGBT Checks ---
+        if I_rms_is_I > max_IGBT_RMS_Current:
+            warnings.warn(
+                f"IGBT RMS current exceeded!\n"
+                f"Maximum allowed: {max_IGBT_RMS_Current:.2f} A, but got {I_rms_is_I:.2f} A.\n"
+                "Please reduce the power requirements or update the IGBT specifications.\n"
+                f"At time cycle {sec_idx + 1} s",
+                UserWarning
+            )
+
+        if I_peak_is_I > max_IGBT_peak_Current:
+            warnings.warn(
+                f"IGBT peak current exceeded!\n"
+                f"Maximum allowed: {max_IGBT_peak_Current:.2f} A, but got {I_peak_is_I:.2f} A.\n"
+                "Please reduce the power requirements or update the IGBT specifications.\n"
+                f"At time cycle {sec_idx + 1} s",
+                UserWarning
+            )
+
+        # --- Diode Checks ---
+        if I_rms_is_D > max_Diode_RMS_Current:
+            warnings.warn(
+                f"Diode RMS current exceeded!\n"
+                f"Maximum allowed: {max_Diode_RMS_Current:.2f} A, but got {I_rms_is_D:.2f} A.\n"
+                "Please reduce the power requirements or update the diode specifications.\n"
+                f"At time cycle {sec_idx + 1} s",
+                UserWarning
+            )
+
+        if I_peak_is_D > max_Diode_peak_Current:
+            warnings.warn(
+                f"Diode peak current exceeded!\n"
+                f"Maximum allowed: {max_Diode_peak_Current:.2f} A, but got {I_peak_is_D:.2f} A.\n"
+                "Please reduce the power requirements or update the diode specifications.\n"
+                f"At time cycle {sec_idx + 1} s",
+                UserWarning
+            )
+
+        # --- Temperature Checks ---
+        if np.any(T_j_I > max_IGBT_temperature):
+            warnings.warn(
+                f"IGBT junction temperature exceeded!\n"
+                f"Maximum allowed: {max_IGBT_temperature:.2f} K, "
+                f"but got up to {np.max(T_j_I):.2f} K.\n"
+                "Please improve heat dissipation (cooling), reduce losses, or update the IGBT specifications.\n"
+                f"At time cycle {sec_idx + 1} s",
+                UserWarning
+            )
+
+        if np.any(T_j_D > max_Diode_temperature):
+            warnings.warn(
+                f"Diode junction temperature exceeded!\n"
+                f"Maximum allowed: {max_Diode_temperature:.2f} K, "
+                f"but got up to {np.max(T_j_D):.2f} K.\n"
+                "Please improve heat dissipation (cooling), reduce losses, or update the diode specifications.\n"
+                f"At time cycle {sec_idx + 1} s",
+                UserWarning
+            )
+
+    @staticmethod
+    def Lifecycle_calculation(Number_of_cycles,pf):
+        """
+        Calculate device lifetime using Miner’s rule.
+
+        Parameters
+        ----------
+        Number_of_cycles : array-like
+            List/array of cycles-to-failure values (Nf) for each
+            stress cycle severity. These are the Nf values you
+            already computed for the device (IGBT or diode).
+        pf : array-like
+            Power factor values per sec.
+
+        Returns
+        -------
+        Life_period : float
+            Estimated life of the device in years.
+
+        Notes
+        -----
+        - Miner’s rule: cumulative damage D = sum(1/Nf_i).
+        - Damage per pass = sum(1/Nf_i).
+        - Repetitions to failure = 1 / Damage_per_set.
+        - Total cycles to failure = len(Nf) * Repetitions.
+        - Life_period = Total_cycles / (seconds in 50 years).
+        """
+
+        Damage_per_set = sum(1 / x for x in Number_of_cycles)
+        Total_cycles = len(Number_of_cycles) * (1 / Damage_per_set)
+
+        Life_period = Total_cycles / (3600 * 24 * 365 * (len(Number_of_cycles) / len(pf)))
+
+        return Life_period
+
+    @staticmethod
+    def delta_t_calculations(A,             # Input = float
+                                           alpha,         # Input = float
+                                           beta1,         # Input = float
+                                           beta0,         # Input = float
+                                           C,             # Input = float
+                                           gamma,         # Input = float
+                                           fd,            # Input = float
+                                           Ea,            # Input = float
+                                           k_b,           # Input = float
+                                           Tj_mean,       # Input = array
+                                           t_cycle_float, # Input = float
+                                           ar,            # Input = float
+                                           Nf,            # Input = array
+                                           pf,            # Input = array
+                                           Life):         # Input = float
+
+        """
+
+        Compute the equivalent delta_Tj (temperature swing) for reliability assessment,
+        following the approach in the lifetime evaluation paper.
+
+        Parameters
+        ----------
+        A : float
+            Lifetime model coefficient (prefactor).
+        alpha : float
+            Temperature exponent in the lifetime model.
+        beta1 : float
+            Coefficient for ΔTj dependence in the lifetime model.
+        beta0 : float
+            Offset term in the ΔTj exponent of the lifetime model.
+        C : float
+            Constant used in the cycle-duration correction factor.
+        gamma : float
+            Exponent for the cycle-duration correction.
+        fd : float
+            Device-specific correction factor (empirical).
+        Ea : float
+            Activation energy [eV].
+        k_b : float
+            Boltzmann constant [eV/K].
+        Tj_mean : array
+            Array of mean junction temperatures [K].
+        t_cycle_float : float
+            Equivalent cycle duration [s].
+        ar : float
+            Reference amplitude ratio (empirical model parameter).
+        Nf : array
+            Cycles-to-failure values from the time-series analysis.
+        pf : array
+            Power factor time-series (used to normalize cycle counts).
+        Life : float
+            Expected device lifetime (years).
+
+        Returns
+        -------
+        number_of_yearly_cycles : float
+            Total number of equivalent thermal cycles per year.
+        Yearly_life_consumption_I : float
+            Annual fraction of life consumed (1/Life).
+        Tj_mean_float : float
+            Mean junction temperature (averaged over all cycles).
+        delta_Tj_float : float
+            Equivalent static temperature swing ΔTj' [K] computed from Lambert W formulation.
+        t_cycle_float : float
+            Equivalent cycle duration [s] .
+
+        """
+
+        number_of_yearly_cycles = 3600 * 365 * 24 * (len(Nf) / len(pf))
+        Yearly_life_consumption_I = (1 / Life)
+        Tj_mean_float = Tj_mean.mean()
+        delta_Tj_float = ((alpha / (beta1 * np.log(ar))) * (lambertw((beta1 * np.log(ar) / alpha) * (((((
+                                                                                                                    number_of_yearly_cycles / Yearly_life_consumption_I) / (
+                                                                                                                    A * (
+                                                                                                                        (
+                                                                                                                                    C + (
+                                                                                                                                        (
+                                                                                                                                            t_cycle_float) ** gamma)) / (
+                                                                                                                                    C + 1)) * (
+                                                                                                                        np.exp(
+                                                                                                                            Ea / (
+                                                                                                                                        k_b * Tj_mean_float))) * fd)) * ar ** (
+                                                                                                           -beta0))) ** (
+                                                                                                                 1 / alpha)))))
+
+        return number_of_yearly_cycles, Yearly_life_consumption_I, Tj_mean_float, delta_Tj_float, t_cycle_float
+
+    @staticmethod
+    def variable_input_normal_distribution(variable, normal_distribution, number_of_samples):
+
+        """
+            Generate random samples of a variable using a normal distribution
+            centered on its nominal value, with variability expressed as a
+            fraction of the variable (e.g. ±5%).
+
+            Parameters
+            ----------
+            variable : float
+                Nominal (mean) value of the parameter to be randomized.
+            normal_distribution : float
+                Relative standard deviation as a fraction of the nominal value
+                (e.g., 0.05 for ±5% variation).
+            number_of_samples : int
+                Number of random samples to generate.
+
+            Returns
+            -------
+            samples : np.ndarray
+                Array of normally distributed random samples centered at `variable`
+                with standard deviation = `normal_distribution * abs(variable)`.
+            """
+
+        sigma = normal_distribution * abs(variable)
+        samples = np.random.normal(variable, sigma, number_of_samples)
+        return samples
+
+    @staticmethod
+    def cdf_with_B_lines(ax, samples, label, title):
+
+        """
+        Plot the empirical cumulative distribution function (CDF) of Monte Carlo
+        lifetime samples and annotate B1 and B10 reliability points with red
+        dotted lines and labels.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axis object on which the CDF will be plotted.
+        samples : np.ndarray
+            Array of lifetime samples (e.g., years to failure) from Monte Carlo.
+        label : str
+            Label for the plotted CDF line (e.g., "IGBT", "Diode").
+        title : str
+            Title string for the figure.
+
+        Returns
+        -------
+        None
+            The function modifies the given axis by plotting the CDF curve,
+            drawing B1/B10 markers, and adding annotations.
+        """
+
+        x = np.sort(samples)
+        y = np.arange(1, len(x) + 1) / len(x) * 100.0
+        ax.plot(x, y, label=label)
+
+        # Ensure 0–100% y-range for clarity
+        ax.set_ylim(0, 100)
+
+        # Compute B1 and B10 (1st and 10th percentiles)
+        b_marks = {1: np.percentile(samples, 1),
+                   10: np.percentile(samples, 10),
+                   50: np.percentile(samples, 50)}
+
+        # Draw red dotted lines + intersection markers + annotations
+        for bx, xv in b_marks.items():
+            ax.axvline(xv, color='red', linestyle=':', linewidth=1)
+            ax.axhline(bx, color='red', linestyle=':', linewidth=1)
+            ax.plot([xv], [bx], 'o', color='red', markersize=4)  # intersection dot
+            ax.annotate(f"B{bx} = {xv:.2f} yrs",
+                        xy=(xv, bx),
+                        xytext=(6, 6),
+                        textcoords='offset points',
+                        fontsize=10,
+                        color='red',
+                        fontweight='bold')
+
+        ax.set_xlabel("Time (years)")
+        ax.set_ylabel("Cumulative failure probability (%)")
+        ax.set_title(title)
+        ax.grid(True, linestyle='--', alpha=0.6)
+        ax.legend(loc="best")

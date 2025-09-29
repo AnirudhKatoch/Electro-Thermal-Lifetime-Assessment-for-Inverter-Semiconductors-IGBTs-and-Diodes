@@ -1,11 +1,13 @@
 import numpy as np
 import warnings
-from mpmath import lambertw
+
+from matplotlib import pyplot as plt
+from scipy.special import lambertw
+import numexpr as ne
 
 class Calculation_functions_class:
 
     @staticmethod
-
     def compute_power_flow_from_pf(P, Q, V_dc, pf,Vs):
         """
         Compute apparent power S, RMS current Is, and phase angle phi
@@ -57,8 +59,7 @@ class Calculation_functions_class:
                     UserWarning
                 )
 
-
-
+        '''
         for i in range(len(pf)):
             if pf[i] == 0:
                 P[i] = 0
@@ -77,6 +78,50 @@ class Calculation_functions_class:
                 else:          # capacitive
                     phi[i] = np.arccos(abs(pf[i]))
                     Q[i] = np.sqrt(S[i] ** 2 - P[i] ** 2)
+        '''
+
+        # masks
+        m0 = pf == 0  # zero power factor
+        mneg = pf < 0  # inductive
+        mpos = pf > 0  # capacitive
+
+        # ---- pf == 0 branch ----
+        # P[i] = 0
+        P[m0] = 0.0
+
+        # S[i] = sqrt(P[i]^2 + Q[i]^2)  (with P already zeroed where m0)
+        S[m0] = np.sqrt(P[m0] ** 2 + Q[m0] ** 2)
+
+        # Is[i] = S[i] / Vs[i]
+        with np.errstate(divide='ignore', invalid='ignore'):
+            Is[m0] = S[m0] / Vs[m0]
+
+        # phi: 0 if S==0 else ±pi/2 depending on sign of Q
+        phi[m0] = 0.0
+        nz = m0 & (S != 0)
+        phi[nz] = np.where(Q[nz] > 0, np.pi / 2, -np.pi / 2)
+
+        # ---- pf != 0 branch ----
+        abspf = np.abs(pf)
+        mnz = ~m0  # pf != 0
+
+        # S[i] = P[i] / abs(pf[i])
+        S[mnz] = P[mnz] / abs(pf[mnz])
+
+        # Is[i] = S[i] / Vs[i]
+        with np.errstate(divide='ignore', invalid='ignore'):
+            Is[mnz] = S[mnz] / Vs[mnz]
+
+        # phi[i] = ± arccos(abs(pf[i]))
+        phi[mneg] = -np.arccos(abspf[mneg])  # inductive
+        phi[mpos] = np.arccos(abspf[mpos])  # capacitive
+
+        # Q[i] = ± sqrt(S[i]^2 - P[i]^2) for pf != 0
+        # (Note: numerical noise can make the radicand slightly negative; clip at 0.)
+        rad = np.clip(S[mnz] ** 2 - P[mnz] ** 2)
+        root = np.sqrt(rad)
+        Q[mneg] = -root[mneg[mnz]]  # align indices via mask
+        Q[mpos] = root[mpos[mnz]]
 
         return S, Is, phi, P, Q, Vs
 
@@ -110,8 +155,14 @@ class Calculation_functions_class:
 
         """
 
-        vs_inverter = np.sqrt(2) * Vs * np.sin(omega * t + phi)
-        is_inverter = np.sqrt(2) * Is * np.sin(omega * t)
+        #vs_inverter = np.sqrt(2) * Vs * np.sin(omega * t + phi)
+        #is_inverter = np.sqrt(2) * Is * np.sin(omega * t)
+
+        sqrt2 = np.sqrt(2.0)
+        vs_inverter = ne.evaluate("sqrt2 * Vs * sin(omega * t + phi)",
+                                  local_dict=dict(sqrt2=sqrt2,Vs=Vs,omega=omega,t=t,phi=phi),)
+        is_inverter = ne.evaluate("sqrt2 * Is * sin(omega * t)",
+                                  local_dict=dict(sqrt2=sqrt2,Is=Is,omega=omega,t=t),)
 
         return vs_inverter, is_inverter
 
@@ -208,17 +259,28 @@ class Calculation_functions_class:
 
         """
 
+        is_I = np.ascontiguousarray(is_I, dtype=np.float64)
+        is_D = np.ascontiguousarray(is_D, dtype=np.float64)
+
         # IGBT
 
-        E_on_I = (np.sqrt(2) / (2 * np.pi)) * V_dc * is_I * t_on
-        E_off_I = (np.sqrt(2) / (2 * np.pi)) * V_dc * is_I * t_off
-        P_sw_I = (E_on_I + E_off_I) * f_sw
-        P_sw_I = np.maximum(P_sw_I, 0)
+        #E_on_I = ((np.sqrt(2) / (2 * np.pi)) * V_dc * is_I * t_on)
+        #E_off_I = ((np.sqrt(2) / (2 * np.pi)) * V_dc * is_I * t_off)
+
+        c1 = (np.sqrt(2) / (2 * np.pi))
+        c2 = (np.sqrt(2) / np.pi)
+
+        P_sw_I_expr = ne.evaluate("(( c1 * V_dc * is_I * t_on) + ( c1 * V_dc * is_I * t_off)) * f_sw",
+                             local_dict=dict(c1=c1,V_dc=V_dc,is_I=is_I,t_on=t_on,t_off=t_off,f_sw=f_sw),)
+        P_sw_I = ne.evaluate("where(P_sw_I_expr > 0.0, P_sw_I_expr, 0.0)", local_dict=dict(P_sw_I_expr=P_sw_I_expr))
+
 
         # Diode
 
-        P_sw_D = ((np.sqrt(2) / np.pi) * (is_D * V_dc) / (I_ref * V_ref)) * Err_D * f_sw
-        P_sw_D = np.maximum(P_sw_D, 0)
+        P_sw_D_expr = ne.evaluate("((c2 * (is_D * V_dc) / (I_ref * V_ref)) * Err_D * f_sw)",
+                             local_dict=dict(c2=c2,V_dc=V_dc,is_D=is_D,f_sw=f_sw,I_ref=I_ref,V_ref=V_ref,Err_D=Err_D),)
+        #P_sw_D = np.maximum(P_sw_D, 0)
+        P_sw_D = ne.evaluate("where(P_sw_D_expr > 0.0, P_sw_D_expr, 0.0)", local_dict=dict(P_sw_D_expr=P_sw_D_expr))
 
         return P_sw_I, P_sw_D
 
@@ -258,19 +320,42 @@ class Calculation_functions_class:
             Instantaneous conduction loss of the diode [W].
         """
 
+        is_I = np.ascontiguousarray(is_I, dtype=np.float64)
+        is_D = np.ascontiguousarray(is_D, dtype=np.float64)
+        pf = np.ascontiguousarray(pf, dtype=np.float64)
+
+        c1 = np.sqrt(2 * np.pi)
+        c2 = (3 * np.pi)
+        c3 = np.pi
+
         # IGBT
 
-        P_con_I = (((is_I ** 2 / 4.0) * R_IGBT) + ((is_I / np.sqrt(2 * np.pi)) * V_0_IGBT) +
-                   ((((is_I ** 2 / 4.0) * (8 * M / (3 * np.pi)) * R_IGBT) + (
-                           (is_I / np.sqrt(2 * np.pi)) * (np.pi * M / 4.0) * V_0_IGBT)) * abs(pf)))
-        P_con_I = np.maximum(P_con_I, 0)
+        #P_con_I = (((is_I ** 2 / 4.0) * R_IGBT) + ((is_I / np.sqrt(2 * np.pi)) * V_0_IGBT) +
+        #           ((((is_I ** 2 / 4.0) * (8 * M / (3 * np.pi)) * R_IGBT) + (
+        #                   (is_I / np.sqrt(2 * np.pi)) * (np.pi * M / 4.0) * V_0_IGBT)) * abs(pf)))
+        #P_con_I = np.maximum(P_con_I, 0)
+
+
+        P_con_I_expr = ne.evaluate("(((is_I ** 2 / 4.0) * R_IGBT) + ((is_I / c1) * V_0_IGBT) + "
+                              "((((is_I ** 2 / 4.0) * (8 * M / c2) * R_IGBT) +"
+                              " ((is_I / c1) * (c3 * M / 4.0) * V_0_IGBT)) * abs(pf)))",
+            local_dict=dict(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT, M=M, pf=pf, c1=c1, c2=c2, c3=c3),)
+        P_con_I = ne.evaluate("where(P_con_I_expr > 0.0, P_con_I_expr, 0.0)", local_dict=dict(P_con_I_expr=P_con_I_expr))
 
         # Diode
 
-        P_con_D = ((((is_D ** 2 / 4.0) * R_D) + ((is_D / np.sqrt(2 * np.pi)) * V_0_D)) -
-                   ((((is_D ** 2 / 4.0)) * ((8 * M / (3 * np.pi)) * R_D)) + (
-                               (is_D / np.sqrt(2 * np.pi)) * (np.pi * M / 4.0) * V_0_D)) * abs(pf))
-        P_con_D = np.maximum(P_con_D, 0)
+        #P_con_D = ((((is_D ** 2 / 4.0) * R_D) + ((is_D / np.sqrt(2 * np.pi)) * V_0_D)) -
+        #           ((((is_D ** 2 / 4.0)) * ((8 * M / (3 * np.pi)) * R_D)) + (
+        #                       (is_D / np.sqrt(2 * np.pi)) * (np.pi * M / 4.0) * V_0_D)) * abs(pf))
+        #P_con_D = np.maximum(P_con_D, 0)
+
+        # Diode
+
+        P_con_D_expr = ne.evaluate("((((is_D ** 2 / 4.0) * R_D) + ((is_D / c1) * V_0_D)) -"
+                              " ((((is_D ** 2 / 4.0)) * ((8 * M / c2) * R_D)) + "
+                              "((is_D / c1) * (c3 * M / 4.0) * V_0_D)) * abs(pf))",
+                                   local_dict=dict(is_D=is_D, R_D=R_D, V_0_D=V_0_D, M=M, pf=pf, c1=c1, c2=c2, c3=c3),)
+        P_con_D = ne.evaluate("where(P_con_D_expr > 0.0, P_con_D_expr, 0.0)",local_dict=dict(P_con_D_expr=P_con_D_expr))
 
         return P_con_I, P_con_D
 
@@ -327,31 +412,36 @@ class Calculation_functions_class:
         Nf : ndarray
             Cycles-to-failure estimate for each cycle [-].
         """
+        
+
+        Tj_mean   = np.ascontiguousarray(Tj_mean,   dtype=np.float64)
+        delta_Tj  = np.ascontiguousarray(delta_Tj,  dtype=np.float64)
+        t_cycle_heat = np.ascontiguousarray(t_cycle_heat, dtype=np.float64)
 
         if np.any(Tj_mean <= 0):
             raise ValueError(
                 "Tj_mean contains 0 K or negative values, which is not physically possible. Check input data.")
 
-        Equation_1 = A
+        c1 = (np.exp(Ea / (k_b * Tj_mean)))
 
-        Equation_2 = (delta_Tj) ** alpha
-
-        Equation_3 = (ar) ** ((beta1 * delta_Tj) + beta0)
-
-        Equation_4 = (C + ((t_cycle_heat) ** gamma)) / (C + 1)
-
-        Equation_5 = np.exp(Ea / (k_b * Tj_mean))
-
-        Equation_6 = fd
-
-        Nf = Equation_1 * Equation_2 * Equation_3 * Equation_4 * Equation_5 * Equation_6
-
-        #if (Nf > 3600*24*365*50*30).any():
-        #    max_val = np.max(Nf)
-        #    Percentage_drop = 3600*24*365*50*30/max_val
-        #    Nf = Nf * Percentage_drop
-
+        Nf = ne.evaluate("(A) * "
+                         "((delta_Tj) ** alpha) * "
+                         "((ar) ** ((beta1 * delta_Tj) + beta0)) * "
+                         "((C + ((t_cycle_heat) ** gamma)) / (C + 1)) *"
+                         "c1 * "
+                         "(fd)", local_dict=dict(A=A,
+                                                 alpha=alpha,
+                                                 beta1=beta1,
+                                                 beta0=beta0,
+                                                 C=C,
+                                                 gamma=gamma,
+                                                 fd=fd,
+                                                 delta_Tj=delta_Tj,
+                                                 ar=ar,
+                                                 t_cycle_heat=t_cycle_heat,
+                                                 c1=c1) )
         return Nf
+
 
     @staticmethod
     def window_stats(temp, time_window, steps_per_sec, pf):
@@ -572,29 +662,31 @@ class Calculation_functions_class:
         - Life_period = Total_cycles / (seconds in 50 years).
         """
 
-        Damage_per_set = sum(1 / x for x in Number_of_cycles)
-        Total_cycles = len(Number_of_cycles) * (1 / Damage_per_set)
+        Number_of_cycles = np.ascontiguousarray(Number_of_cycles, dtype=np.float64)
 
-        Life_period = Total_cycles / (3600 * 24 * 365 * (len(Number_of_cycles) / len(pf)))
+        Damage_per_set = np.sum(np.reciprocal(Number_of_cycles, dtype=np.float64))
 
-        return Life_period
+        #Total_cycles = len(Number_of_cycles) * (1 / Damage_per_set)
+        #Life_period = Total_cycles / (3600 * 24 * 365 * (len(Number_of_cycles) / len(pf)))
+
+        return len(pf)/(3600*24*365*Damage_per_set)
 
     @staticmethod
     def delta_t_calculations(A,             # Input = float
-                                           alpha,         # Input = float
-                                           beta1,         # Input = float
-                                           beta0,         # Input = float
-                                           C,             # Input = float
-                                           gamma,         # Input = float
-                                           fd,            # Input = float
-                                           Ea,            # Input = float
-                                           k_b,           # Input = float
-                                           Tj_mean,       # Input = array
-                                           t_cycle_float, # Input = float
-                                           ar,            # Input = float
-                                           Nf,            # Input = array
-                                           pf,            # Input = array
-                                           Life):         # Input = float
+                             alpha,         # Input = float
+                             beta1,         # Input = float
+                             beta0,         # Input = float
+                             C,             # Input = float
+                             gamma,         # Input = float
+                             fd,            # Input = float
+                             Ea,            # Input = float
+                             k_b,           # Input = float
+                             Tj_mean,       # Input = array
+                             t_cycle_float, # Input = float
+                             ar,            # Input = float
+                             Nf,            # Input = array
+                             pf,            # Input = array
+                             Life):         # Input = float
 
         """
 
@@ -649,22 +741,19 @@ class Calculation_functions_class:
 
         """
 
-        number_of_yearly_cycles = 3600 * 365 * 24 * (len(Nf) / len(pf))
-        Yearly_life_consumption_I = (1 / Life)
+        Tj_mean = np.ascontiguousarray(Tj_mean, dtype=np.float64)
         Tj_mean_float = Tj_mean.mean()
-        delta_Tj_float = ((alpha / (beta1 * np.log(ar))) * (lambertw((beta1 * np.log(ar) / alpha) * (((((
-                                                                                                                    number_of_yearly_cycles / Yearly_life_consumption_I) / (
-                                                                                                                    A * (
-                                                                                                                        (
-                                                                                                                                    C + (
-                                                                                                                                        (
-                                                                                                                                            t_cycle_float) ** gamma)) / (
-                                                                                                                                    C + 1)) * (
-                                                                                                                        np.exp(
-                                                                                                                            Ea / (
-                                                                                                                                        k_b * Tj_mean_float))) * fd)) * ar ** (
-                                                                                                           -beta0))) ** (
-                                                                                                                 1 / alpha)))))
+
+        number_of_yearly_cycles = float(3600 * 24 * 365 * (len(Nf) / len(pf)))
+        Yearly_life_consumption_I = (1 / Life)
+
+        #delta_Tj_float = ((alpha / (beta1 * np.log(ar))) * (lambertw((beta1 * np.log(ar) / alpha) * ((((( number_of_yearly_cycles / Yearly_life_consumption_I) / (A * ((C + ((t_cycle_float) ** gamma)) / (C + 1)) * (np.exp(Ea / (k_b * Tj_mean_float))) * fd)) * ar ** (-beta0))) ** (1 / alpha)))))
+
+        ln_ar = np.log(ar)
+        exp_term = (np.exp(Ea / (k_b * Tj_mean_float)))
+        lambertw_term = ((beta1 * ln_ar / alpha) * (((((number_of_yearly_cycles / Yearly_life_consumption_I) / (A * ((C +((t_cycle_float) ** gamma)) / (C + 1)) * exp_term * fd)) * ar ** (-beta0))) ** (1 / alpha)))
+        delta_Tj_float = (alpha / (beta1 * ln_ar)) * lambertw(lambertw_term, k=0).real
+
 
         return number_of_yearly_cycles, Yearly_life_consumption_I, Tj_mean_float, delta_Tj_float, t_cycle_float
 
@@ -753,3 +842,4 @@ class Calculation_functions_class:
         ax.set_title(title)
         ax.grid(True, linestyle='--', alpha=0.6)
         ax.legend(loc="best")
+
