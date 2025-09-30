@@ -1,14 +1,19 @@
 import numpy as np
-import warnings
-
-from matplotlib import pyplot as plt
 from scipy.special import lambertw
 import numexpr as ne
 
 class Calculation_functions_class:
 
     @staticmethod
-    def compute_power_flow_from_pf(P, Q, V_dc, pf,Vs):
+    def compute_power_flow_from_pf(P,
+                                   Q,
+                                   V_dc,
+                                   pf,
+                                   Vs,
+                                   M,
+                                   single_phase_inverter_topology,
+                                   inverter_phases,
+                                   modulation_scheme):
         """
         Compute apparent power S, RMS current Is, and phase angle phi
 
@@ -24,6 +29,13 @@ class Calculation_functions_class:
              Power factor per sec [-].
         Vs : array
              RMS AC-side phase voltage per sec [V]
+        single_phase_inverter_topology : {"half","full"}
+            Inverter topology (affects Vs limit for single-phase).
+        inverter_phases : {1,3}
+            Number of phases. If 3, Vs is interpreted as PHASE RMS (i.e., V_ll/sqrt(3)).
+        modulation_scheme : {"spwm","svm"}
+            Modulation strategy used for generating inverter switching signals.
+
 
         Returns
         -------
@@ -45,18 +57,28 @@ class Calculation_functions_class:
         Is = np.zeros_like(pf, dtype=float)  # [A] Inverter RMS current
         phi = np.zeros_like(pf, dtype=float)  # [rad] Phase angle
 
+        if inverter_phases == 1:
+            if single_phase_inverter_topology == "full":
+                Vs_theoretical = (M * V_dc) / np.sqrt(2.0)
+            elif single_phase_inverter_topology == "half":
+                Vs_theoretical = (M * V_dc) / (2.0 * np.sqrt(2.0))
+        elif inverter_phases ==3:
+            if modulation_scheme == "svm":
+                # Space vector PWM (or 3rd harmonic injection)
+                Vs_theoretical = (M * V_dc) / np.sqrt(6.0)  # [V RMS phase]
+            elif modulation_scheme == "spwm" :  # "spwm"
+                # Sinusoidal PWM
+                Vs_theoretical = (M * V_dc) / (2.0 * np.sqrt(2.0))
+
         if Vs.size == 0:
-            Vs = V_dc/(2*np.sqrt(2))
+            Vs = Vs_theoretical.copy()
 
         else:
-            Vs_new = V_dc / (2 * np.sqrt(2))
-            indices = np.where(Vs > Vs_new)[0]
-
+            indices = np.where(Vs > Vs_theoretical)[0]
             if indices.size > 0:
-                warnings.warn(
-                    f"Inverter AC RMS voltage exceeds the theoretical maximum limit "
-                    f"at time cycles {indices} s.",
-                    UserWarning
+                raise ValueError(
+                    f"Invalid input: AC phase RMS voltage exceeds the theoretical limit "
+                    f"Vs must not be greater than {np.max(Vs_theoretical)}."
                 )
 
         '''
@@ -94,7 +116,7 @@ class Calculation_functions_class:
 
         # Is[i] = S[i] / Vs[i]
         with np.errstate(divide='ignore', invalid='ignore'):
-            Is[m0] = S[m0] / Vs[m0]
+            Is[m0] = S[m0] / (Vs[m0] if inverter_phases == 1 else (3.0 * Vs[m0]))
 
         # phi: 0 if S==0 else ±pi/2 depending on sign of Q
         phi[m0] = 0.0
@@ -110,7 +132,7 @@ class Calculation_functions_class:
 
         # Is[i] = S[i] / Vs[i]
         with np.errstate(divide='ignore', invalid='ignore'):
-            Is[mnz] = S[mnz] / Vs[mnz]
+            Is[mnz] = S[mnz] / (Vs[mnz] if inverter_phases == 1 else (3.0 * Vs[mnz]))
 
         # phi[i] = ± arccos(abs(pf[i]))
         phi[mneg] = -np.arccos(abspf[mneg])  # inductive
@@ -120,8 +142,12 @@ class Calculation_functions_class:
         # (Note: numerical noise can make the radicand slightly negative; clip at 0.)
         rad = np.clip(S[mnz] ** 2 - P[mnz] ** 2)
         root = np.sqrt(rad)
-        Q[mneg] = -root[mneg[mnz]]  # align indices via mask
-        Q[mpos] = root[mpos[mnz]]
+        idx_mnz = np.where(mnz)[0]
+        Q[idx_mnz[mneg[mnz]]] = -root[mneg[mnz]]
+        Q[idx_mnz[mpos[mnz]]] = root[mpos[mnz]]
+
+
+
 
         return S, Is, phi, P, Q, Vs
 
@@ -516,12 +542,10 @@ class Calculation_functions_class:
         violations = np.where(V_CE > max_V_CE)[0]
 
         if violations.size > 0:
-            warnings.warn(
-                f"Collector–emitter voltage exceeded!\n"
-                f"Maximum allowed: {max_V_CE}, but got values up to {V_CE.max()}.\n"
-                "Please reduce the DC voltage or update the IGBT specifications.\n"
-                f"Violations occurred at indices (time steps): {violations}",
-                UserWarning
+            raise ValueError(
+                f"Collector–emitter voltage exceeded! "
+                f"Maximum allowed: {max_V_CE}, but got values up to {V_CE.max()}. "
+                "Please reduce the DC voltage or update the IGBT specifications."
             )
 
         return V_CE
@@ -532,8 +556,7 @@ class Calculation_functions_class:
             is_I, is_D, T_j_I, T_j_D,
             max_IGBT_RMS_Current, max_IGBT_peak_Current,
             max_Diode_RMS_Current, max_Diode_peak_Current,
-            max_IGBT_temperature, max_Diode_temperature,
-            sec_idx=0
+            max_IGBT_temperature, max_Diode_temperature
     ):
         """
         Check IGBT and Diode current and temperature limits.
@@ -565,7 +588,7 @@ class Calculation_functions_class:
 
         Raises
         ------
-        UserWarning
+        Raises Error
             If any violation occurs.
         """
 
@@ -575,63 +598,60 @@ class Calculation_functions_class:
         I_rms_is_D = np.sqrt(np.mean(is_D ** 2))
         I_peak_is_D = np.max(np.abs(is_D))
 
+
+
         # --- IGBT Checks ---
         if I_rms_is_I > max_IGBT_RMS_Current:
-            warnings.warn(
-                f"IGBT RMS current exceeded!\n"
-                f"Maximum allowed: {max_IGBT_RMS_Current:.2f} A, but got {I_rms_is_I:.2f} A.\n"
-                "Please reduce the power requirements or update the IGBT specifications.\n"
-                f"At time cycle {sec_idx + 1} s",
-                UserWarning
+
+            raise ValueError(
+                f"IGBT RMS current exceeded! "
+                f"Maximum allowed: {max_IGBT_RMS_Current:.2f} A, "
+                f"but got {I_rms_is_I:.2f} A. "
+                "Please reduce the power requirements or update the IGBT specifications."
             )
 
         if I_peak_is_I > max_IGBT_peak_Current:
-            warnings.warn(
-                f"IGBT peak current exceeded!\n"
-                f"Maximum allowed: {max_IGBT_peak_Current:.2f} A, but got {I_peak_is_I:.2f} A.\n"
-                "Please reduce the power requirements or update the IGBT specifications.\n"
-                f"At time cycle {sec_idx + 1} s",
-                UserWarning
+            raise ValueError(
+                f"IGBT peak current exceeded! "
+                f"Maximum allowed: {max_IGBT_peak_Current:.2f} A, "
+                f"but got {I_peak_is_I:.2f} A. "
+                "Please reduce the power requirements or update the IGBT specifications."
             )
 
         # --- Diode Checks ---
         if I_rms_is_D > max_Diode_RMS_Current:
-            warnings.warn(
-                f"Diode RMS current exceeded!\n"
-                f"Maximum allowed: {max_Diode_RMS_Current:.2f} A, but got {I_rms_is_D:.2f} A.\n"
-                "Please reduce the power requirements or update the diode specifications.\n"
-                f"At time cycle {sec_idx + 1} s",
-                UserWarning
+            raise ValueError(
+                f"Diode RMS current exceeded! "
+                f"Maximum allowed: {max_Diode_RMS_Current:.2f} A, "
+                f"but got {I_rms_is_D:.2f} A. "
+                "Please reduce the power requirements or update the diode specifications."
             )
 
         if I_peak_is_D > max_Diode_peak_Current:
-            warnings.warn(
-                f"Diode peak current exceeded!\n"
-                f"Maximum allowed: {max_Diode_peak_Current:.2f} A, but got {I_peak_is_D:.2f} A.\n"
-                "Please reduce the power requirements or update the diode specifications.\n"
-                f"At time cycle {sec_idx + 1} s",
-                UserWarning
+            raise ValueError(
+                f"Diode peak current exceeded! "
+                f"Maximum allowed: {max_Diode_peak_Current:.2f} A, "
+                f"but got {I_peak_is_D:.2f} A. "
+                "Please reduce the power requirements or update the diode specifications."
             )
 
         # --- Temperature Checks ---
         if np.any(T_j_I > max_IGBT_temperature):
-            warnings.warn(
-                f"IGBT junction temperature exceeded!\n"
+            raise ValueError(
+                f"IGBT junction temperature exceeded! "
                 f"Maximum allowed: {max_IGBT_temperature:.2f} K, "
-                f"but got up to {np.max(T_j_I):.2f} K.\n"
-                "Please improve heat dissipation (cooling), reduce losses, or update the IGBT specifications.\n"
-                f"At time cycle {sec_idx + 1} s",
-                UserWarning
+                f"but got up to {np.max(T_j_I):.2f} K. "
+                "Please improve heat dissipation (cooling), reduce losses, "
+                "or update the IGBT specifications."
             )
 
         if np.any(T_j_D > max_Diode_temperature):
-            warnings.warn(
-                f"Diode junction temperature exceeded!\n"
+            raise ValueError(
+                f"Diode junction temperature exceeded! "
                 f"Maximum allowed: {max_Diode_temperature:.2f} K, "
-                f"but got up to {np.max(T_j_D):.2f} K.\n"
-                "Please improve heat dissipation (cooling), reduce losses, or update the diode specifications.\n"
-                f"At time cycle {sec_idx + 1} s",
-                UserWarning
+                f"but got up to {np.max(T_j_D):.2f} K. "
+                "Please improve heat dissipation (cooling), reduce losses, "
+                "or update the diode specifications."
             )
 
     @staticmethod
@@ -842,4 +862,35 @@ class Calculation_functions_class:
         ax.set_title(title)
         ax.grid(True, linestyle='--', alpha=0.6)
         ax.legend(loc="best")
+
+    @staticmethod
+    def check_max_apparent_power(S,Vs, max_IGBT_RMS_Current, inverter_phases):
+
+        """
+        Check that inverter apparent power does not exceed device current limits.
+
+        Parameters
+        ----------
+        S : array
+            Apparent power demand per sample [VA].
+        Vs : array
+            RMS AC-side phase voltage [V].
+        max_IGBT_RMS_Current : float
+            Maximum allowable IGBT RMS current per phase [A].
+        inverter_phases : int
+            Number of inverter phases (1 for single-phase, 3 for three-phase).
+
+        Raises
+        ------
+        ValueError
+            If any sample of S exceeds the maximum apparent power capability
+            (S_max = Vs * max_IGBT_RMS_Current * inverter_phases).
+        """
+
+        S_max = Vs * max_IGBT_RMS_Current * inverter_phases
+        if np.any(S > S_max):
+            raise ValueError(
+                f"Apparent power limit exceeded: "
+                f"S_max = {np.max(Vs) * max_IGBT_RMS_Current * inverter_phases} VA. "
+                f"Reduce the apparent power requirement from the inverter.")
 

@@ -3,12 +3,15 @@ import pandas as pd
 from Input_parameters_file import Input_parameters_class
 from Calculation_functions_file import Calculation_functions_class
 from Electro_thermal_behavior_file import Electro_thermal_behavior_class
-from Plotting_and_saving_dataframe_file import Plotting_and_saving_dataframe_class
+from Plotting_file import Plotting_class
 import time
+from datetime import datetime
+from Dataframe_saving_file import save_dataframes
 
 start_time = time.time()
 
 Input_parameters = Input_parameters_class()
+
 
 '################################################################################################################################################################'
 'Input Parameters'
@@ -23,6 +26,11 @@ f = Input_parameters.f
 M = Input_parameters.M
 Tamb = Input_parameters.Tamb
 dt = Input_parameters.dt
+
+thermal_states = Input_parameters.thermal_states
+single_phase_inverter_topology = Input_parameters.single_phase_inverter_topology
+inverter_phases = Input_parameters.inverter_phases
+modulation_scheme = Input_parameters.modulation_scheme
 
 # ----------------------------------------#
 # Max switch limits
@@ -140,7 +148,18 @@ Calculation_functions_class.check_vce(overshoot_margin, V_dc, max_V_CE)
 # Calculate power flow equations
 #----------------------------------------#
 
-S,Is,phi,P,Q,Vs = Calculation_functions_class.compute_power_flow_from_pf(P=P, Q=Q, V_dc = V_dc, pf=pf, Vs=Vs)  # Inverter Power Flow
+S,Is,phi,P,Q,Vs = Calculation_functions_class.compute_power_flow_from_pf(P=P,
+                                                                         Q=Q,
+                                                                         V_dc = V_dc,
+                                                                         pf=pf,
+                                                                         Vs=Vs,
+                                                                         M=M,
+                                                                         single_phase_inverter_topology=single_phase_inverter_topology,
+                                                                         inverter_phases= inverter_phases,
+                                                                         modulation_scheme=modulation_scheme)  # Inverter Power Flow
+
+
+Calculation_functions_class.check_max_apparent_power(S=S,Vs=Vs,max_IGBT_RMS_Current=max_IGBT_RMS_Current,inverter_phases=inverter_phases)
 
 #----------------------------------------#
 # Temperature calculations
@@ -148,122 +167,223 @@ S,Is,phi,P,Q,Vs = Calculation_functions_class.compute_power_flow_from_pf(P=P, Q=
 
 Tbr_I = np.zeros_like(r_I, dtype=float)     # [K] Temperature rise contributions of each Foster RC branch for IGBT junction → case.
 Tbr_D = np.zeros_like(r_D, dtype=float)     # [K] Temperature rise contributions of each Foster RC branch for diode junction → case.
+
+# Shared State
 Tbr_p = np.zeros_like(r_paste, dtype=float) # [K] Temperature rise across the thermal paste (case → heatsink interface).
 Tbr_s = np.zeros_like(r_sink, dtype=float)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient).
 
-P_leg_all = []
-TjI_all   = []
-TjD_all   = []
-all_rows = []
+# Separated_state
+Tbr_p_I = np.zeros_like(r_paste, dtype=float) # [K] Temperature rise across the thermal paste (case → heatsink interface) in IGBT.
+Tbr_s_I = np.zeros_like(r_sink, dtype=float)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient) in IGBT.
+Tbr_p_D = np.zeros_like(r_paste, dtype=float) # [K] Temperature rise across the thermal paste (case → heatsink interface) in Diode.
+Tbr_s_D = np.zeros_like(r_sink, dtype=float)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient) in Diode.
 
-start_time_new = time.time()
+sec_idx_list   = []
+time_list      = []
+m_list         = []
+is_I_list      = []
+is_D_list      = []
+P_sw_I_list    = []
+P_sw_D_list    = []
+P_con_I_list   = []
+P_con_D_list   = []
+P_leg_list     = []
+TjI_list       = []
+TjD_list       = []
+vs_list        = []
+is_inv_list    = []
 
-for sec_idx, (Vs_i, Is_i, phi_i, Vdc_i, pf_i) in enumerate(zip(Vs, Is, phi, V_dc, pf)):
+if thermal_states == "separated":
 
-    t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, T_j_I, T_j_D, vs_inverter, is_inverter,Tbr_I,Tbr_D,Tbr_p,Tbr_s = Electro_thermal_behavior_class.Electro_thermal_behavior_shared_thermal_state(dt=dt,             # Input = Float
-                                                                                              Vs=Vs_i,           # Input = Float, Originally = Array, Will go in loop
-                                                                                              Is=Is_i,           # Input = Float, Originally = Array, Will go in loop
-                                                                                              phi=phi_i,         # Input = Float, Originally = Array, Will go in loop
-                                                                                              omega=omega,       # Input = Float
-                                                                                              M=M,               # Input = Float
-                                                                                              V_dc=Vdc_i,        # Input = Float, Originally = Array, Will go in loop
-                                                                                              t_on=t_on,         # Input = Float
-                                                                                              t_off=t_off,       # Input = Float
-                                                                                              f_sw=f_sw,         # Input = Float
-                                                                                              I_ref=I_ref,       # Input = Float
-                                                                                              V_ref=V_ref,       # Input = Float
-                                                                                              Err_D=Err_D,       # Input = Float
-                                                                                              R_IGBT=R_IGBT,     # Input = Float
-                                                                                              V_0_IGBT=V_0_IGBT, # Input = Float
-                                                                                              pf=pf_i,           # Input = Float, Originally = Array, Will go in loop
-                                                                                              R_D=R_D,           # Input = Float
-                                                                                              V_0_D=V_0_D,       # Input = Float
-                                                                                              alpha_I=alpha_I,   # Input = Array
-                                                                                              alpha_D=alpha_D,   # Input = Array
-                                                                                              alpha_p=alpha_p,   # Input = Array
-                                                                                              alpha_s = alpha_s, # Input = Array
-                                                                                              r_I=r_I,           # Input = Array
-                                                                                              r_D=r_D,           # Input = Array
-                                                                                              r_paste=r_paste,   # Input = Array
-                                                                                              r_sink=r_sink,     # Input = Array
-                                                                                              Tamb=Tamb,         # Input = Array
-                                                                                              Tbr_I=Tbr_I,       # Input = Array
-                                                                                              Tbr_D=Tbr_D,       # Input = Array
-                                                                                              Tbr_p=Tbr_p,       # Input = Array
-                                                                                              Tbr_s=Tbr_s)       # Input = Array
-    Calculation_functions_class.check_igbt_diode_limits(
-        is_I=is_I, is_D=is_D, T_j_I=T_j_I, T_j_D=T_j_D,
-        max_IGBT_RMS_Current=max_IGBT_RMS_Current,
-        max_IGBT_peak_Current=max_IGBT_peak_Current,
-        max_Diode_RMS_Current=max_Diode_RMS_Current,
-        max_Diode_peak_Current=max_Diode_peak_Current,
-        max_IGBT_temperature=max_IGBT_temperature,
-        max_Diode_temperature=max_Diode_temperature,
-        sec_idx=sec_idx+1
-    )
+    for sec_idx, (Vs_i, Is_i, phi_i, Vdc_i, pf_i) in enumerate(zip(Vs, Is, phi, V_dc, pf)):
+        t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, T_j_I, T_j_D, vs_inverter, is_inverter, Tbr_I, Tbr_D, Tbr_p_I, Tbr_s_I, Tbr_p_D, Tbr_s_D = (
+            Electro_thermal_behavior_class.Electro_thermal_behavior_separated_thermal_state(dt=dt,             # Input = Float
+                                                                                            Vs=Vs_i,           # Input = Float, Originally = Array, Will go in loop
+                                                                                            Is=Is_i,           # Input = Float, Originally = Array, Will go in loop
+                                                                                            phi=phi_i,         # Input = Float, Originally = Array, Will go in loop
+                                                                                            omega=omega,       # Input = Float
+                                                                                            M=M,               # Input = Float
+                                                                                            V_dc=Vdc_i,        # Input = Float, Originally = Array, Will go in loop
+                                                                                            t_on=t_on,         # Input = Float
+                                                                                            t_off=t_off,       # Input = Float
+                                                                                            f_sw=f_sw,         # Input = Float
+                                                                                            I_ref=I_ref,       # Input = Float
+                                                                                            V_ref=V_ref,       # Input = Float
+                                                                                            Err_D=Err_D,       # Input = Float
+                                                                                            R_IGBT=R_IGBT,     # Input = Float
+                                                                                            V_0_IGBT=V_0_IGBT, # Input = Float
+                                                                                            pf=pf_i,           # Input = Float, Originally = Array, Will go in loop
+                                                                                            R_D=R_D,           # Input = Float
+                                                                                            V_0_D=V_0_D,       # Input = Float
+                                                                                            alpha_I=alpha_I,   # Input = Array
+                                                                                            alpha_D=alpha_D,   # Input = Array
+                                                                                            alpha_p=alpha_p,   # Input = Array
+                                                                                            alpha_s=alpha_s,   # Input = Array
+                                                                                            r_I=r_I,           # Input = Array
+                                                                                            r_D=r_D,           # Input = Array
+                                                                                            r_paste=r_paste,   # Input = Array
+                                                                                            r_sink=r_sink,     # Input = Array
+                                                                                            Tamb=Tamb,         # Input = Array
+                                                                                            Tbr_I=Tbr_I,       # Input = Array
+                                                                                            Tbr_D=Tbr_D,       # Input = Array
+                                                                                            Tbr_p_I=Tbr_p_I,   # Input = Array
+                                                                                            Tbr_s_I=Tbr_s_I,   # Input = Array
+                                                                                            Tbr_p_D=Tbr_p_D,   # Input = Array
+                                                                                            Tbr_s_D=Tbr_s_D))  # Input = Array
 
-    P_leg_all.append(P_leg)
-    TjI_all.append(T_j_I)
-    TjD_all.append(T_j_D)
+        Calculation_functions_class.check_igbt_diode_limits(
+            is_I=is_I, is_D=is_D, T_j_I=T_j_I, T_j_D=T_j_D,
+            max_IGBT_RMS_Current=max_IGBT_RMS_Current,
+            max_IGBT_peak_Current=max_IGBT_peak_Current,
+            max_Diode_RMS_Current=max_Diode_RMS_Current,
+            max_Diode_peak_Current=max_Diode_peak_Current,
+            max_IGBT_temperature=max_IGBT_temperature,
+            max_Diode_temperature=max_Diode_temperature
+        )
 
-    t_abs = t + sec_idx
-    df_1 = pd.DataFrame({
-        "sec_idx":sec_idx+1,
-        "time_s": t_abs,
-        "m": m,
-        "is_I": is_I,
-        "is_D": is_D,
-        "P_sw_I": P_sw_I,
-        "P_sw_D": P_sw_D,
-        "P_con_I": P_con_I,
-        "P_con_D": P_con_D,
-        "P_leg": P_leg,
-        "T_j_I": T_j_I,
-        "T_j_D": T_j_D,
-        "vs_inverter":vs_inverter,
-        "is_inverter":is_inverter,
-    })
-    all_rows.append(df_1)
+        sec_idx_list.append(np.full(t.size, sec_idx + 1, dtype=np.int32))
+        time_list.append(t + sec_idx)
 
-end_time_new = time.time()
-print("Execution time loop:", end_time_new - start_time_new, "seconds")
-
-    #print(sec_idx+1)
-
-P_leg_all = np.concatenate(P_leg_all)  # [W] total leg power over full run
-TjI_all   = np.concatenate(TjI_all)    # [K] IGBT junction temp over full run
-TjD_all   = np.concatenate(TjD_all)    # [K] Diode junction temp over full run
-
-TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = TjI_all, time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
-TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = TjD_all, time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
-
+        m_list.append(m)
+        is_I_list.append(is_I)
+        is_D_list.append(is_D)
+        P_sw_I_list.append(P_sw_I)
+        P_sw_D_list.append(P_sw_D)
+        P_con_I_list.append(P_con_I)
+        P_con_D_list.append(P_con_D)
+        P_leg_list.append(P_leg)
+        TjI_list.append(T_j_I)
+        TjD_list.append(T_j_D)
+        vs_list.append(vs_inverter)
+        is_inv_list.append(is_inverter)
 
 
+elif thermal_states == "shared":
+
+    for sec_idx, (Vs_i, Is_i, phi_i, Vdc_i, pf_i) in enumerate(zip(Vs, Is, phi, V_dc, pf)):
+
+
+        t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, T_j_I, T_j_D, vs_inverter, is_inverter,Tbr_I,Tbr_D,Tbr_p,Tbr_s =\
+            Electro_thermal_behavior_class.Electro_thermal_behavior_shared_thermal_state(dt=dt,         # Input = Float
+                                                                                         Vs=Vs_i,           # Input = Float, Originally = Array, Will go in loop
+                                                                                         Is=Is_i,           # Input = Float, Originally = Array, Will go in loop
+                                                                                         phi=phi_i,         # Input = Float, Originally = Array, Will go in loop
+                                                                                         omega=omega,       # Input = Float
+                                                                                         M=M,               # Input = Float
+                                                                                         V_dc=Vdc_i,        # Input = Float, Originally = Array, Will go in loop
+                                                                                         t_on=t_on,         # Input = Float
+                                                                                         t_off=t_off,       # Input = Float
+                                                                                         f_sw=f_sw,         # Input = Float
+                                                                                         I_ref=I_ref,       # Input = Float
+                                                                                         V_ref=V_ref,       # Input = Float
+                                                                                         Err_D=Err_D,       # Input = Float
+                                                                                         R_IGBT=R_IGBT,     # Input = Float
+                                                                                         V_0_IGBT=V_0_IGBT, # Input = Float
+                                                                                         pf=pf_i,           # Input = Float, Originally = Array, Will go in loop
+                                                                                         R_D=R_D,           # Input = Float
+                                                                                         V_0_D=V_0_D,       # Input = Float
+                                                                                         alpha_I=alpha_I,   # Input = Array
+                                                                                         alpha_D=alpha_D,   # Input = Array
+                                                                                         alpha_p=alpha_p,   # Input = Array
+                                                                                         alpha_s = alpha_s, # Input = Array
+                                                                                         r_I=r_I,           # Input = Array
+                                                                                         r_D=r_D,           # Input = Array
+                                                                                         r_paste=r_paste,   # Input = Array
+                                                                                         r_sink=r_sink,     # Input = Array
+                                                                                         Tamb=Tamb,         # Input = Array
+                                                                                         Tbr_I=Tbr_I,       # Input = Array
+                                                                                         Tbr_D=Tbr_D,       # Input = Array
+                                                                                         Tbr_p=Tbr_p,       # Input = Array
+                                                                                         Tbr_s=Tbr_s)       # Input = Array
+
+
+
+        Calculation_functions_class.check_igbt_diode_limits(
+            is_I=is_I, is_D=is_D, T_j_I=T_j_I, T_j_D=T_j_D,
+            max_IGBT_RMS_Current=max_IGBT_RMS_Current,
+            max_IGBT_peak_Current=max_IGBT_peak_Current,
+            max_Diode_RMS_Current=max_Diode_RMS_Current,
+            max_Diode_peak_Current=max_Diode_peak_Current,
+            max_IGBT_temperature=max_IGBT_temperature,
+            max_Diode_temperature=max_Diode_temperature )
+
+        sec_idx_list.append(np.full(t.size, sec_idx + 1, dtype=np.int32))
+        time_list.append(t + sec_idx)
+
+        m_list.append(m)
+        is_I_list.append(is_I)
+        is_D_list.append(is_D)
+        P_sw_I_list.append(P_sw_I)
+        P_sw_D_list.append(P_sw_D)
+        P_con_I_list.append(P_con_I)
+        P_con_D_list.append(P_con_D)
+        P_leg_list.append(P_leg)
+        TjI_list.append(T_j_I)
+        TjD_list.append(T_j_D)
+        vs_list.append(vs_inverter)
+        is_inv_list.append(is_inverter)
+
+
+def cat(lst): return np.concatenate(lst)
+
+df_1 = pd.DataFrame({
+    "sec_idx":     cat(sec_idx_list),
+    "time_s":      cat(time_list),
+    "m":           cat(m_list),
+    "is_I":        cat(is_I_list),
+    "is_D":        cat(is_D_list),
+    "P_sw_I":      cat(P_sw_I_list),
+    "P_sw_D":      cat(P_sw_D_list),
+    "P_con_I":     cat(P_con_I_list),
+    "P_con_D":     cat(P_con_D_list),
+    "P_leg_all":       cat(P_leg_list),
+    "TjI_all":       cat(TjI_list),
+    "TjD_all":       cat(TjD_list),
+    "vs_inverter": cat(vs_list),
+    "is_inverter": cat(is_inv_list),
+})
+
+TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = np.array(df_1["TjI_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
+TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = np.array(df_1["TjD_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
 
 #----------------------------------------#
-# Life cycle calculations (Its use simple model if that does not work it just uses static model)
+# Life cycle calculations (Its use  model from research paper and if that does not work it just uses static model of that defined model)
 #----------------------------------------#
-
 
 #----------------------------------------#
 # IGBT
 #----------------------------------------#
 
 Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
-                      alpha=alpha,
-                      beta1=beta1,
-                      beta0=beta0,
-                      C=C,
-                      gamma=gamma,
-                      fd=fI,
-                      Ea=Ea,
-                      k_b=k_b,
-                      Tj_mean=TjI_mean,
-                      delta_Tj=TjI_delta,
-                      t_cycle_heat=t_cycle_heat_I,
-                      ar=ar )
+                                                     alpha=alpha,
+                                                     beta1=beta1,
+                                                     beta0=beta0,
+                                                     C=C,
+                                                     gamma=gamma,
+                                                     fd=fI,
+                                                     Ea=Ea,
+                                                     k_b=k_b,
+                                                     Tj_mean=TjI_mean,
+                                                     delta_Tj=TjI_delta,
+                                                     t_cycle_heat=t_cycle_heat_I,
+                                                     ar=ar )
 
 Life_I = Calculation_functions_class.Lifecycle_calculation(Nf_I, pf)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -305,8 +425,6 @@ if Life_I > IGBT_max_lifetime:
     if isinstance(Life_I, (np.ndarray,)):
         Life_I = Life_I.item()
 
-
-
 #----------------------------------------#
 # Diode
 #----------------------------------------#
@@ -326,7 +444,6 @@ Nf_D = Calculation_functions_class.Cycles_to_failure(A=A,
                       ar=ar )
 
 Life_D = Calculation_functions_class.Lifecycle_calculation(Nf_D,pf)
-
 
 if Life_D > Diode_max_lifetime:
 
@@ -365,13 +482,10 @@ if Life_D > Diode_max_lifetime:
     if isinstance(Life_D, (np.ndarray,)):
         Life_D = Life_D.item()
 
-
 print('Life_I',Life_I)
 print('Life_D',Life_D)
 
-
 Life_switch = min(Life_I, Life_D)
-
 
 end_time = time.time()
 print("Execution time all code:", end_time - start_time, "seconds")
@@ -380,13 +494,9 @@ print("Execution time all code:", end_time - start_time, "seconds")
 'Monte carlo-based reliability assessment'
 '################################################################################################################################################################'
 
-
-
-
 #----------------------------------------#
 # Calculating delta T from mean T mean and heat cycle values
 #----------------------------------------#
-
 
 number_of_yearly_cycles ,Yearly_life_consumption_I, Tj_mean_float_I, delta_Tj_float_I,t_cycle_float = Calculation_functions_class.delta_t_calculations(A = A,                 # Input = float
                                                                                                                                                        alpha = alpha,         # Input = float
@@ -445,8 +555,6 @@ delta_Tj_float_I_normal_distribution = Calculation_functions_class.variable_inpu
 Tj_mean_float_D_normal_distribution  = Calculation_functions_class.variable_input_normal_distribution(variable = Tj_mean_float_D, normal_distribution = 0.05, number_of_samples = 10000)
 delta_Tj_float_D_normal_distribution = Calculation_functions_class.variable_input_normal_distribution(variable = delta_Tj_float_D, normal_distribution = 0.05, number_of_samples = 10000)
 
-
-
 Nf_I_normal_distribution = Calculation_functions_class.Cycles_to_failure(A=A_normal_distribution,
                                                                          alpha=alpha_normal_distribution,
                                                                          beta1=beta1_normal_distribution,
@@ -490,10 +598,7 @@ Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distrib
 # Saving dataframes
 #----------------------------------------#
 
-df_1 = pd.concat(all_rows, ignore_index=True)
-df_1["P_leg_all"] = P_leg_all
-df_1["TjI_all"]   = TjI_all
-df_1["TjD_all"]   = TjD_all
+
 
 df_2 = pd.DataFrame({
     "time_period_df2":time_period_df2,
@@ -542,6 +647,10 @@ df_4 = pd.DataFrame({
     "Life_period_D_normal_distribution":Life_period_D_normal_distribution,
     "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution })
 
-#Plotting_and_saving_dataframe_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures", Location_dataframes = "dataframe_files")
+
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+#save_dataframes(df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_dataframes = "dataframe_files",timestamp=timestamp)
+#Plotting_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures",timestamp=timestamp)
 
 
