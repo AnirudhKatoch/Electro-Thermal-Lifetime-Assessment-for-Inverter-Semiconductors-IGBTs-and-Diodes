@@ -4,7 +4,36 @@ class Input_parameters_class:
 
     def __init__(self):
 
-        self.thermal_states = "separated"  # This defines the thermal state. If this is "separated" then IGBT and Diode have different paste and heat sink, if this is "shared" then IGBT and Diode are on the same paste and heat sink.
+        self.saving_dataframes = False # Set True if you want to save dataframes and False if you don't want to save dataframes.
+        self.plotting_values = False # Set True if you want to plot values and False if you don't want to plot values.
+
+        #self.pf = np.ones(3600) # [-] Inverter power factor with second resolution
+        #self.pf = np.array([0.1,0.1,1,-0.5,0])  # [-]
+        #self.pf = np.zeros(3600)  # [-] Inverter power factor with second resolution
+        self.pf = np.full(600,0.3)  # Positive is capacitive and negative is inducitve
+        self.P = np.full(len(self.pf), 34500*0.3, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
+        self.Q = np.full(len(self.pf), 34500, dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
+        self.Vs = np.full(len(self.pf), 230)     # [V] Inverter phase RMS AC side voltage
+        #self.Vs = np.array([])                          # [V] Inverter RMS AC side voltage
+        self.V_dc = np.full(len(self.pf), 545)   # [V] Inverter DC side voltage
+        self.f = 50                                      # [Hz] Grid frequency
+        self.M = 1.034                                   # [-] Inverter modulation index # Modulation cannot be above 1 as model does not take into account. Here I have done it barely to make the system follow physics law.
+        self.Tamb = 298.15                               # [K] Ambient Temperature
+        self.dt = 0.001                                  # [s] Simulation timestep (1 ms)
+
+        if (self.pf[0] == 0 and self.Q[0] == 0):
+            raise ValueError(
+                "Invalid input: pf[0] = 0 and Q[0] = 0. "
+                "When the power factor is zero, you must provide a nonzero Q[0] "
+                "(reactive power).")
+
+        elif (self.pf[0] != 0 and self.P[0] == 0):
+            raise ValueError(
+                "Invalid input: pf[0] ≠ 0 but P[0] = 0. "
+                "When the power factor is nonzero, you must provide a nonzero P[0] "
+                "(active power).")
+
+        self.thermal_states = "shared"  # This defines the thermal state. If this is "separated" then IGBT and Diode have different paste and heat sink, if this is "shared" then IGBT and Diode are on the same paste and heat sink.
         if self.thermal_states not in ("separated", "shared"):
             raise ValueError("thermal_states must be 'separated' or 'shared'")
 
@@ -20,39 +49,6 @@ class Input_parameters_class:
         self.single_phase_inverter_topology = "full"  # options: "half" or "full"  # One can choose is the single phase inverter half bridge or full bridge
         if self.single_phase_inverter_topology not in ("half", "full"): # when inverter_phases == 3 this variable is invalid.
             raise ValueError("single_phase_inverter_topology must be 'half' or 'full'")
-
-
-        #self.pf = np.ones(3600) # [-] Inverter power factor with second resolution
-        #self.pf = np.array([0.1,0.1,1,-0.5,0])  # [-]
-        #self.pf = np.zeros(3600)  # [-] Inverter power factor with second resolution
-        self.pf = np.full(600,0.2)  # Positive is capacitive and negative is inducitve
-        self.P = np.full(len(self.pf), 6750, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
-        self.Q = np.full(len(self.pf), 34000, dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
-
-        # Validation check
-
-        if (self.pf[0] == 0 and self.Q[0] == 0):
-            raise ValueError(
-                "Invalid input: pf[0] = 0 and Q[0] = 0. "
-                "When the power factor is zero, you must provide a nonzero Q[0] "
-                "(reactive power)."
-            )
-
-        elif (self.pf[0] != 0 and self.P[0] == 0):
-            raise ValueError(
-                "Invalid input: pf[0] ≠ 0 but P[0] = 0. "
-                "When the power factor is nonzero, you must provide a nonzero P[0] "
-                "(active power)."
-            )
-
-        self.Vs = np.full(len(self.pf), 230)     # [V] Inverter phase RMS AC side voltage
-        #self.Vs = np.array([])                          # [V] Inverter RMS AC side voltage
-        self.V_dc = np.full(len(self.pf), 545)   # [V] Inverter DC side voltage
-        self.f = 50                                      # [Hz] Grid frequency
-        self.M = 1.034                                   # [-] Inverter modulation index # Modulation cannot be above 1 as model does not take into account. Here I have done it barely to make the system follow physics law.
-        self.Tamb = 298.15                               # [K] Ambient Temperature
-        self.dt = 0.001                                  # [s] Simulation timestep (1 ms)
-
 
         # ----------------------------------------#
         # Switch Max limit
@@ -71,9 +67,8 @@ class Input_parameters_class:
         # Max lifetime
         # ----------------------------------------#
 
-        self.IGBT_max_lifetime = 1000  # years
-        self.Diode_max_lifetime = 1000  # years
-
+        self.IGBT_max_lifetime = 30  # years
+        self.Diode_max_lifetime = 30  # years
 
         # ----------------------------------------#
         # Switching losses

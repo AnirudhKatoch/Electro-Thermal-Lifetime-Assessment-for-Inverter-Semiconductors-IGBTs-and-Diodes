@@ -3,15 +3,14 @@ import pandas as pd
 from Input_parameters_file import Input_parameters_class
 from Calculation_functions_file import Calculation_functions_class
 from Electro_thermal_behavior_file import Electro_thermal_behavior_class
-from Plotting_file import Plotting_class
 import time
 from datetime import datetime
 from Dataframe_saving_file import save_dataframes
+from Plotting_file import Plotting_class
 
 start_time = time.time()
 
 Input_parameters = Input_parameters_class()
-
 
 '################################################################################################################################################################'
 'Input Parameters'
@@ -133,6 +132,8 @@ Tgrid = Input_parameters.Tgrid
 Nsec = Input_parameters.Nsec
 Ngrid = Input_parameters.Ngrid
 t_cycle_heat_my_value = Input_parameters.t_cycle_heat_my_value
+saving_dataframes = Input_parameters.saving_dataframes
+plotting_values = Input_parameters.plotting_values
 
 '################################################################################################################################################################'
 'main'
@@ -368,62 +369,12 @@ Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
                                                      t_cycle_heat=t_cycle_heat_I,
                                                      ar=ar )
 
-Life_I = Calculation_functions_class.Lifecycle_calculation(Nf_I, pf)
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-if Life_I > IGBT_max_lifetime:
-
-    _, _, _, dT_equiv_I, t_cycle_float_equiv_I = Calculation_functions_class.delta_t_calculations(A=A,
-                                                                             alpha=alpha,
-                                                                             beta1=beta1,
-                                                                             beta0=beta0,
-                                                                             C=C,
-                                                                             gamma=gamma,
-                                                                             fd=fI,
-                                                                             Ea=Ea,
-                                                                             k_b=k_b,
-                                                                             Tj_mean = TjI_mean,
-                                                                             t_cycle_float = t_cycle_heat_my_value,
-                                                                             ar=ar,
-                                                                             Nf = np.ones_like(TjI_mean),
-                                                                             pf = pf,
-                                                                             Life = IGBT_max_lifetime)
-
-    Nf_prime_I = Calculation_functions_class.Cycles_to_failure(A=A,
-                                                               alpha=alpha,
-                                                               beta1=beta1,
-                                                               beta0=beta0,
-                                                               C=C,
-                                                               gamma=gamma,
-                                                               fd=fI,
-                                                               Ea=Ea,
-                                                               k_b=k_b,
-                                                               Tj_mean=np.array([float(np.mean(TjI_mean))]),
-                                                               delta_Tj=np.array([float(dT_equiv_I)]),
-                                                               t_cycle_heat=t_cycle_heat_my_value,
-                                                               ar=ar)
-
-    LC_year_I = (len(TjI_mean) / len(pf)) * 3600 * 24 * 365 / Nf_prime_I
-    Life_I = (1.0 / LC_year_I) if LC_year_I > 0 else float("inf")
-    if isinstance(Life_I, (np.ndarray,)):
-        Life_I = Life_I.item()
+Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_I,pf = pf,Component_max_lifetime = IGBT_max_lifetime)
 
 #----------------------------------------#
 # Diode
@@ -443,44 +394,9 @@ Nf_D = Calculation_functions_class.Cycles_to_failure(A=A,
                       t_cycle_heat=t_cycle_heat_D,
                       ar=ar )
 
-Life_D = Calculation_functions_class.Lifecycle_calculation(Nf_D,pf)
+Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_D,pf = pf,Component_max_lifetime = Diode_max_lifetime)
 
-if Life_D > Diode_max_lifetime:
 
-    _, _, _, dT_equiv_D, _ = Calculation_functions_class.delta_t_calculations(A=A,
-                                                                              alpha=alpha,
-                                                                              beta1=beta1,
-                                                                              beta0=beta0,
-                                                                              C=C,
-                                                                              gamma=gamma,
-                                                                              fd=fd,
-                                                                              Ea=Ea,
-                                                                              k_b=k_b,
-                                                                              Tj_mean=TjD_mean,
-                                                                              t_cycle_float=t_cycle_heat_my_value,
-                                                                              ar=ar,
-                                                                              Nf=np.ones_like(TjD_mean),
-                                                                              pf=pf,
-                                                                              Life=Diode_max_lifetime)
-
-    Nf_prime_D = Calculation_functions_class.Cycles_to_failure(A=A,
-                                                               alpha=alpha,
-                                                               beta1=beta1,
-                                                               beta0=beta0,
-                                                               C=C,
-                                                               gamma=gamma,
-                                                               fd=fd,
-                                                               Ea=Ea,
-                                                               k_b=k_b,
-                                                               Tj_mean=np.array([float(np.mean(TjD_mean))]),
-                                                               delta_Tj=np.array([float(dT_equiv_D)]),
-                                                               t_cycle_heat=t_cycle_heat_my_value,
-                                                               ar=ar)
-
-    LC_year_D = (len(TjD_mean) / len(pf)) * 3600 * 24 * 365 / Nf_prime_D
-    Life_D = (1.0 / LC_year_D) if LC_year_D > 0 else float("inf")
-    if isinstance(Life_D, (np.ndarray,)):
-        Life_D = Life_D.item()
 
 print('Life_I',Life_I)
 print('Life_D',Life_D)
@@ -647,10 +563,12 @@ df_4 = pd.DataFrame({
     "Life_period_D_normal_distribution":Life_period_D_normal_distribution,
     "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution })
 
-
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-#save_dataframes(df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_dataframes = "dataframe_files",timestamp=timestamp)
-#Plotting_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures",timestamp=timestamp)
+if saving_dataframes == True:
+    save_dataframes(df_1=df_1, df_2=df_2, df_3=df_3, df_4=df_4, Location_dataframes="dataframe_files",timestamp=timestamp)
+
+if plotting_values == True:
+    Plotting_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures",timestamp=timestamp)
 
 

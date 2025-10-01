@@ -894,3 +894,85 @@ class Calculation_functions_class:
                 f"S_max = {np.max(Vs) * max_IGBT_RMS_Current * inverter_phases} VA. "
                 f"Reduce the apparent power requirement from the inverter.")
 
+    @staticmethod
+    def Lifecycle_calculation_acceleration_factor(Nf ,pf , Component_max_lifetime ):
+
+        """
+        Compute a finite, mission-referenced lifetime from per-cycle physics (Nf) using
+        a Table-of-Damage style normalization.
+
+        -----------------------------
+        WHAT THIS FUNCTION RETURNS
+        -----------------------------
+        Life_I : float
+        The *equivalent* lifetime (in years) of the component when operated under the
+        provided profile window `pf`, *normalized* to the mission life `Component_max_lifetime`.
+        - If the present operating profile is harsher than the mission, Life_I < Component_max_lifetime.
+        - If it is milder, Life_I > Component_max_lifetime (unless the calendar floor dominates).
+
+        -----------------------------
+        KEY IDEAS / WHY THIS WORKS
+        -----------------------------
+
+        1) Miner’s rule in “per-set” form:
+        We consider a single execution of your profile window which is one sinusoidal cycle to be one “set”.
+        The per-set damage is sum(1/Nf). Repeating that set many times accumulates damage.
+
+        2) Time normalization (sets per year):
+        We convert one set to *years* by computing how many times per year the set repeats.
+        This ties the Miner sum to calendar time (no more infinite lifetimes).
+
+        3) Calendar-damage floor equals mission life:
+        We add a tiny baseline (calendar) damage per set so life never diverges at very low stress.
+        Here the floor is chosen to be exactly the mission (`Component_max_lifetime`), meaning
+        “no-better-than-mission” behavior at the extreme low-stress limit.
+
+        4) Acceleration Factor (AF) vs. mission:
+        We compare the *effective* per-set damage to the *target* per-set damage implied by the
+        mission life. AF = damage_test / damage_target. Life = mission / AF.
+        This is exactly the “Table of Damage” normalization.
+
+        -----------------------------
+        PARAMETERS (INPUTS)
+        -----------------------------
+                Nf : array-like of float
+                    Cycles-to-failure for each counted damage event inside one pf window (one “set”).
+
+                pf : sequence (e.g., array, list)
+                    The time-series profile window. Its length is used as a proxy for
+                    “seconds per set” under the assumption of 1 Hz sampling (1 sample = 1 second).
+
+                Component_max_lifetime : float
+                    The mission/reference life in years (e.g., 30 years). Used in two roles:
+                    (a) the *target* lifetime for Table-of-Damage normalization, and
+                    (b) the *calendar floor* (no-better-than-mission) so life cannot diverge at very low stress.
+
+                -----------------------------
+                OUTPUT
+                -----------------------------
+                Life_I : float
+                    Mission-referenced equivalent lifetime in years.
+                """
+
+
+
+        Nf = np.asarray(Nf, dtype=float)
+
+        # --- Miner damage per set (include the events inside each pf step) ---
+        # If events_per_step varies with time, make it an array shaped like Nf.
+        damage_per_set = float(np.sum(1 / Nf))  # sum_i (events_in_step_i / Nf)
+
+        # --- correct time scaling to sets/year ---
+        sets_per_year = (3600.0 * 24.0 * 365.0) / (float(len(pf)))
+
+        floor_damage_per_set = 1.0 / (sets_per_year * Component_max_lifetime)
+
+        effective_damage_per_set = damage_per_set + floor_damage_per_set  # SO this is total damage
+
+        target_damage_per_set = (1.0 / Component_max_lifetime) / sets_per_year
+
+        AF = effective_damage_per_set / target_damage_per_set
+
+        Life = Component_max_lifetime / AF
+
+        return Life
