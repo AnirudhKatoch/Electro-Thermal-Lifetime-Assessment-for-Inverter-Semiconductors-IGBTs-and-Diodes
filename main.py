@@ -134,10 +134,13 @@ Ngrid = Input_parameters.Ngrid
 t_cycle_heat_my_value = Input_parameters.t_cycle_heat_my_value
 saving_dataframes = Input_parameters.saving_dataframes
 plotting_values = Input_parameters.plotting_values
+design_control = Input_parameters.design_control
+overshoot_margin_inverter = Input_parameters.overshoot_margin_inverter
 
 '################################################################################################################################################################'
 'main'
 '################################################################################################################################################################'
+
 
 #----------------------------------------#
 # Checking collector–emitter voltage
@@ -160,7 +163,24 @@ S,Is,phi,P,Q,Vs = Calculation_functions_class.compute_power_flow_from_pf(P=P,
                                                                          modulation_scheme=modulation_scheme)  # Inverter Power Flow
 
 
-Calculation_functions_class.check_max_apparent_power(S=S,Vs=Vs,max_IGBT_RMS_Current=max_IGBT_RMS_Current,inverter_phases=inverter_phases)
+if design_control == "inverter":
+    S,Is,phi,P,Q,Vs,N_parallel = Calculation_functions_class.compute_power_flow_from_pf_design_control_inverter(overshoot_margin_inverter,
+                                                       inverter_phases=inverter_phases,
+                                                       Vs=Vs,
+                                                       max_IGBT_RMS_Current=max_IGBT_RMS_Current,
+                                                       S=S,
+                                                       P=P,
+                                                       Q=Q,
+                                                       pf=pf,
+                                                       single_phase_inverter_topology=single_phase_inverter_topology,
+                                                       modulation_scheme=modulation_scheme,
+                                                       M=M,
+                                                       V_dc=V_dc)
+elif design_control == "switch":
+    N_parallel = 1
+
+
+Calculation_functions_class.check_max_apparent_power_switch(S=S,Vs=Vs,max_IGBT_RMS_Current=max_IGBT_RMS_Current,inverter_phases=inverter_phases)
 
 #----------------------------------------#
 # Temperature calculations
@@ -369,11 +389,6 @@ Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
                                                      t_cycle_heat=t_cycle_heat_I,
                                                      ar=ar )
 
-
-
-
-
-
 Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_I,pf = pf,Component_max_lifetime = IGBT_max_lifetime)
 
 #----------------------------------------#
@@ -499,10 +514,10 @@ Nf_D_normal_distribution = Calculation_functions_class.Cycles_to_failure(A=A_nor
                                                                          t_cycle_heat=t_cycle_float_normal_distribution,
                                                                          ar=ar_normal_distribution )
 
-Life_period_I_normal_distribution = Nf_I_normal_distribution / (3600 * 24 * 365 * (len(Nf_I)/len(pf)))
-Life_period_D_normal_distribution = Nf_D_normal_distribution / (3600 * 24 * 365 * (len(Nf_I)/len(pf)))
-Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distribution,Life_period_D_normal_distribution)
 
+Life_period_I_normal_distribution = Calculation_functions_class.Lifecycle_normal_distribution_calculation_acceleration_factor(Nf=Nf_I_normal_distribution, f=f, Component_max_lifetime=IGBT_max_lifetime)
+Life_period_D_normal_distribution = Calculation_functions_class.Lifecycle_normal_distribution_calculation_acceleration_factor(Nf=Nf_D_normal_distribution, f=f, Component_max_lifetime=Diode_max_lifetime)
+Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distribution,Life_period_D_normal_distribution)
 
 
 '################################################################################################################################################################'
@@ -538,7 +553,10 @@ df_3 = pd.DataFrame({
     "pf": pf,
     "Vs": Vs,
     "Is":Is,
-    "V_dc": V_dc})
+    "V_dc": V_dc,
+    "N_parallel":N_parallel})
+
+
 
 df_4 = pd.DataFrame({
     "A_normal_distribution": A_normal_distribution,
@@ -557,11 +575,17 @@ df_4 = pd.DataFrame({
     "delta_Tj_float_I_normal_distribution": delta_Tj_float_I_normal_distribution,
     "Tj_mean_float_D_normal_distribution": Tj_mean_float_D_normal_distribution,
     "delta_Tj_float_D_normal_distribution": delta_Tj_float_D_normal_distribution,
+
+
     "Nf_I_normal_distribution":Nf_I_normal_distribution,
     "Nf_D_normal_distribution":Nf_D_normal_distribution,
     "Life_period_I_normal_distribution":Life_period_I_normal_distribution,
     "Life_period_D_normal_distribution":Life_period_D_normal_distribution,
-    "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution })
+    "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution,
+    "inverter_phases":inverter_phases})
+
+
+
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -570,5 +594,6 @@ if saving_dataframes == True:
 
 if plotting_values == True:
     Plotting_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures",timestamp=timestamp)
+
 
 

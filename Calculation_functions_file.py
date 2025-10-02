@@ -146,10 +146,170 @@ class Calculation_functions_class:
         Q[idx_mnz[mneg[mnz]]] = -root[mneg[mnz]]
         Q[idx_mnz[mpos[mnz]]] = root[mpos[mnz]]
 
-
-
-
         return S, Is, phi, P, Q, Vs
+
+    @staticmethod
+    def compute_power_flow_from_pf_design_control_inverter(overshoot_margin_inverter,
+                                                           inverter_phases,
+                                                           Vs,
+                                                           max_IGBT_RMS_Current,
+                                                           S,
+                                                           P,
+                                                           Q,
+                                                           pf,
+                                                           single_phase_inverter_topology,
+                                                           modulation_scheme,
+                                                           M,
+                                                           V_dc):
+
+        @staticmethod
+        def compute_power_flow_from_pf_design_control_inverter(
+                overshoot_margin_inverter,
+                inverter_phases,
+                Vs,
+                max_IGBT_RMS_Current,
+                S,
+                P,
+                Q,
+                pf,
+                single_phase_inverter_topology,
+                modulation_scheme,
+                M,
+                V_dc
+        ):
+            """
+            Compute apparent power S, RMS current Is, and phase angle phi
+            with automatic parallel switch sizing (design-control version).
+
+            Parameters
+            ----------
+            overshoot_margin_inverter : float
+                Safety margin factor (e.g., 0.1 → 10%).
+            inverter_phases : {1,3}
+                Number of inverter phases.
+            Vs : array
+                RMS AC-side phase voltage per sec [V].
+            max_IGBT_RMS_Current : float
+                Maximum RMS current rating of one IGBT device [A].
+            S : array
+                Apparent power per sec [VA] (system level before scaling).
+            P : array
+                Active power per sec [W].
+            Q : array
+                Reactive power per sec [VAr].
+            pf : array
+                Power factor per sec [-].
+            single_phase_inverter_topology : {"half","full"}
+                Topology for single-phase inverter.
+            modulation_scheme : {"spwm","svm"}
+                Modulation strategy.
+            M : float
+                Modulation index [-].
+            V_dc : array
+                DC-side phase voltage per sec [V].
+
+            Returns
+            -------
+            S : array
+                Apparent power per sample [VA] (per-device after scaling).
+            Is : array
+                RMS current per sample [A] (per-device).
+            phi : array
+                Phase angle between voltage and current per sample [rad].
+            P : array
+                Active power per sample [W] (per-device after pf==0 rule).
+            Q : array
+                Reactive power per sample [VAr] (per-device, updated for pf ≠ 0).
+            Vs : array
+                RMS AC-side phase voltage per sec [V].
+            N_parallel : int
+                Number of parallel switches required.
+            """
+
+        margin = 1.0 + float(overshoot_margin_inverter)
+        S_max_eff = inverter_phases * Vs * float(max_IGBT_RMS_Current) / margin
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratio = np.where(S_max_eff > 0, S / S_max_eff, 0.0)
+        N_parallel = int(np.ceil(np.nanmax(ratio)))
+
+        if N_parallel < 1:
+            N_parallel = 1
+        P = P / N_parallel
+        Q = Q / N_parallel
+
+        S = np.zeros_like(pf, dtype=float)  # [VA] Inverter RMS apparent power
+        Is = np.zeros_like(pf, dtype=float)  # [A] Inverter RMS current
+        phi = np.zeros_like(pf, dtype=float)  # [rad] Phase angle
+
+        if inverter_phases == 1:
+            if single_phase_inverter_topology == "full":
+                Vs_theoretical = (M * V_dc) / np.sqrt(2.0)
+            elif single_phase_inverter_topology == "half":
+                Vs_theoretical = (M * V_dc) / (2.0 * np.sqrt(2.0))
+        elif inverter_phases == 3:
+            if modulation_scheme == "svm":
+                # Space vector PWM (or 3rd harmonic injection)
+                Vs_theoretical = (M * V_dc) / np.sqrt(6.0)  # [V RMS phase]
+            elif modulation_scheme == "spwm":  # "spwm"
+                # Sinusoidal PWM
+                Vs_theoretical = (M * V_dc) / (2.0 * np.sqrt(2.0))
+
+        if Vs.size == 0:
+            Vs = Vs_theoretical.copy()
+
+        else:
+            indices = np.where(Vs > Vs_theoretical)[0]
+            if indices.size > 0:
+                raise ValueError(
+                    f"Invalid input: AC phase RMS voltage exceeds the theoretical limit "
+                    f"Vs must not be greater than {np.max(Vs_theoretical)}."
+                )
+
+        # masks
+        m0 = pf == 0  # zero power factor
+        mneg = pf < 0  # inductive
+        mpos = pf > 0  # capacitive
+
+        # ---- pf == 0 branch ----
+        # P[i] = 0
+        P[m0] = 0.0
+
+        # S[i] = sqrt(P[i]^2 + Q[i]^2)  (with P already zeroed where m0)
+        S[m0] = np.sqrt(P[m0] ** 2 + Q[m0] ** 2)
+
+        # Is[i] = S[i] / Vs[i]
+        with np.errstate(divide='ignore', invalid='ignore'):
+            Is[m0] = S[m0] / (Vs[m0] if inverter_phases == 1 else (3.0 * Vs[m0]))
+
+        # phi: 0 if S==0 else ±pi/2 depending on sign of Q
+        phi[m0] = 0.0
+        nz = m0 & (S != 0)
+        phi[nz] = np.where(Q[nz] > 0, np.pi / 2, -np.pi / 2)
+
+        # ---- pf != 0 branch ----
+        abspf = np.abs(pf)
+        mnz = ~m0  # pf != 0
+
+        # S[i] = P[i] / abs(pf[i])
+        S[mnz] = P[mnz] / abs(pf[mnz])
+
+        # Is[i] = S[i] / Vs[i]
+        with np.errstate(divide='ignore', invalid='ignore'):
+            Is[mnz] = S[mnz] / (Vs[mnz] if inverter_phases == 1 else (3.0 * Vs[mnz]))
+
+        # phi[i] = ± arccos(abs(pf[i]))
+        phi[mneg] = -np.arccos(abspf[mneg])  # inductive
+        phi[mpos] = np.arccos(abspf[mpos])  # capacitive
+
+        # Q[i] = ± sqrt(S[i]^2 - P[i]^2) for pf != 0
+        # (Note: numerical noise can make the radicand slightly negative; clip at 0.)
+        rad = np.clip(S[mnz] ** 2 - P[mnz] ** 2)
+        root = np.sqrt(rad)
+        idx_mnz = np.where(mnz)[0]
+        Q[idx_mnz[mneg[mnz]]] = -root[mneg[mnz]]
+        Q[idx_mnz[mpos[mnz]]] = root[mpos[mnz]]
+
+        return S, Is, phi, P, Q, Vs,N_parallel
 
     @staticmethod
     def Inverter_voltage_and_current(Vs, Is, phi, t, omega):
@@ -864,7 +1024,7 @@ class Calculation_functions_class:
         ax.legend(loc="best")
 
     @staticmethod
-    def check_max_apparent_power(S,Vs, max_IGBT_RMS_Current, inverter_phases):
+    def check_max_apparent_power_switch(S,Vs, max_IGBT_RMS_Current, inverter_phases):
 
         """
         Check that inverter apparent power does not exceed device current limits.
@@ -905,74 +1065,96 @@ class Calculation_functions_class:
         WHAT THIS FUNCTION RETURNS
         -----------------------------
         Life_I : float
-        The *equivalent* lifetime (in years) of the component when operated under the
-        provided profile window `pf`, *normalized* to the mission life `Component_max_lifetime`.
-        - If the present operating profile is harsher than the mission, Life_I < Component_max_lifetime.
-        - If it is milder, Life_I > Component_max_lifetime (unless the calendar floor dominates).
+            The *equivalent* lifetime (in years) of the component when operated under the
+            provided profile window `pf`, *normalized* to the mission life `Component_max_lifetime`.
+            - If the present operating profile is harsher than the mission, Life_I < Component_max_lifetime.
+            - If it is milder, Life_I > Component_max_lifetime (unless the calendar floor dominates).
 
         -----------------------------
         KEY IDEAS / WHY THIS WORKS
         -----------------------------
 
         1) Miner’s rule in “per-set” form:
-        We consider a single execution of your profile window which is one sinusoidal cycle to be one “set”.
-        The per-set damage is sum(1/Nf). Repeating that set many times accumulates damage.
+            We consider a single execution of your profile window which is one sinusoidal cycle to be one “set”.
+            The per-set damage is sum(1/Nf). Repeating that set many times accumulates damage.
 
         2) Time normalization (sets per year):
-        We convert one set to *years* by computing how many times per year the set repeats.
-        This ties the Miner sum to calendar time (no more infinite lifetimes).
+            We convert one set to *years* by computing how many times per year the set repeats.
+            This ties the Miner sum to calendar time (no more infinite lifetimes).
 
         3) Calendar-damage floor equals mission life:
-        We add a tiny baseline (calendar) damage per set so life never diverges at very low stress.
-        Here the floor is chosen to be exactly the mission (`Component_max_lifetime`), meaning
-        “no-better-than-mission” behavior at the extreme low-stress limit.
+            We add a tiny baseline (calendar) damage per set so life never diverges at very low stress.
+            Here the floor is chosen to be exactly the mission (`Component_max_lifetime`), meaning
+            “no-better-than-mission” behavior at the extreme low-stress limit.
 
         4) Acceleration Factor (AF) vs. mission:
-        We compare the *effective* per-set damage to the *target* per-set damage implied by the
-        mission life. AF = damage_test / damage_target. Life = mission / AF.
-        This is exactly the “Table of Damage” normalization.
+            We compare the *effective* per-set damage to the *target* per-set damage implied by the
+            mission life. AF = damage_test / damage_target. Life = mission / AF.
+            This is exactly the “Table of Damage” normalization.
 
         -----------------------------
         PARAMETERS (INPUTS)
         -----------------------------
-                Nf : array-like of float
-                    Cycles-to-failure for each counted damage event inside one pf window (one “set”).
+        Nf : array-like of float
+            Cycles-to-failure for each counted damage event inside one pf window (one “set”).
 
-                pf : sequence (e.g., array, list)
-                    The time-series profile window. Its length is used as a proxy for
-                    “seconds per set” under the assumption of 1 Hz sampling (1 sample = 1 second).
+        pf : sequence (e.g., array, list)
+            The time-series profile window. Its length is used as a proxy for
+            “seconds per set” under the assumption of 1 Hz sampling (1 sample = 1 second).
 
-                Component_max_lifetime : float
-                    The mission/reference life in years (e.g., 30 years). Used in two roles:
-                    (a) the *target* lifetime for Table-of-Damage normalization, and
-                    (b) the *calendar floor* (no-better-than-mission) so life cannot diverge at very low stress.
+        Component_max_lifetime : float
+            The mission/reference life in years (e.g., 30 years). Used in two roles:
+            (a) the *target* lifetime for Table-of-Damage normalization, and
+            (b) the *calendar floor* (no-better-than-mission) so life cannot diverge at very low stress.
 
-                -----------------------------
-                OUTPUT
-                -----------------------------
-                Life_I : float
-                    Mission-referenced equivalent lifetime in years.
-                """
-
-
+        -----------------------------
+        OUTPUT
+        -----------------------------
+        Life_I : float
+            Mission-referenced equivalent lifetime in years.
+        """
 
         Nf = np.asarray(Nf, dtype=float)
 
         # --- Miner damage per set (include the events inside each pf step) ---
         # If events_per_step varies with time, make it an array shaped like Nf.
         damage_per_set = float(np.sum(1 / Nf))  # sum_i (events_in_step_i / Nf)
-
         # --- correct time scaling to sets/year ---
         sets_per_year = (3600.0 * 24.0 * 365.0) / (float(len(pf)))
-
         floor_damage_per_set = 1.0 / (sets_per_year * Component_max_lifetime)
-
         effective_damage_per_set = damage_per_set + floor_damage_per_set  # SO this is total damage
-
         target_damage_per_set = (1.0 / Component_max_lifetime) / sets_per_year
-
         AF = effective_damage_per_set / target_damage_per_set
-
         Life = Component_max_lifetime / AF
 
         return Life
+
+    @staticmethod
+    def Lifecycle_normal_distribution_calculation_acceleration_factor(Nf ,f ,Component_max_lifetime ):
+
+        """
+        Parameters
+        ----------
+        Nf : float
+            Number of cycles to failure for the component under given conditions [-].
+        f : float
+            Operating frequency of the component [Hz].
+        Component_max_lifetime : float
+            Maximum component lifetime in years.
+
+        Returns
+        -------
+        Life_period : float
+            Effective lifetime of the component in years, after applying
+            the acceleration factor.
+        """
+
+        damage_per_set = 1 / Nf
+        sets_per_year = 3600.0 * 24.0 * 365.0 * f
+        floor_damage_per_set = 1.0 / (sets_per_year * Component_max_lifetime)
+        effective_damage_per_set = damage_per_set + floor_damage_per_set
+        target_damage_per_set = (1.0 / Component_max_lifetime) / sets_per_year
+        AF = effective_damage_per_set / target_damage_per_set
+        Life_period = Component_max_lifetime / AF
+
+        return Life_period

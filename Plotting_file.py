@@ -218,7 +218,7 @@ class Plotting_class:
         # -------------------------------------------------
 
         # Keep 1 of every 100 points to reduce load
-        Load_reduction_number = 10
+        Load_reduction_number = 1
         df_down = df_1.iloc[::Load_reduction_number].copy()
 
         # Prepare time axis with auto-scaling
@@ -495,3 +495,59 @@ class Plotting_class:
                           title="Cumulative distribution function of switch lifetime")
         plt.savefig(f"{Location_plots}/25_CDF_Life_period_Switch.png")
         plt.close(fig25)
+
+        # -------------------------------
+        # Fig.26: CDF of Inverter System Lifetime (any device failure ⇒ system failure)
+        # -------------------------------
+
+        inverter_phases = int(df_4["inverter_phases"].iloc[0])
+        if inverter_phases == 3:
+            n_series_switches = 6
+            sys_label_base = "3φ inverter (6 series positions)"
+        elif inverter_phases == 1:
+            n_series_switches = 4
+            sys_label_base = "1φ inverter (4 series positions)"
+        else:
+            raise ValueError(f"Unsupported inverter_phases={inverter_phases}; expected 1 or 3.")
+
+        # Parallel devices per position (store N_parallel earlier in df_4; default 1 if absent)
+        N_parallel = df_3["N_parallel"].iloc[0]
+
+        # 1) Device-level lifetime samples (min of IGBT/Diode per *device*)
+        sw_samples = np.asarray(df_4["Life_period_switch_normal_distribution"])  # 1D array
+
+        # 2) Monte Carlo: build systems = series positions × N_parallel devices
+        n_systems = 10000
+        rng = np.random.default_rng(42)
+
+        # Draw shape: (n_systems, n_series_switches, N_parallel)
+        draws = rng.choice(sw_samples, size=(n_systems, n_series_switches, N_parallel), replace=True)
+
+        # System fails on first device failure anywhere → min over all devices in the system
+        sys_samples = draws.min(axis=(1, 2))
+
+        # 3) Plot single CDF and save
+        fig26, ax26 = plt.subplots(figsize=(6.4, 4.8))
+        Calculation_functions_class.cdf_with_B_lines(
+            ax26,
+            samples=sys_samples,
+            label=f"{sys_label_base} + {N_parallel} switches in parallel",
+            title="CDF of Inverter System Lifetime"
+        )
+        ax26.legend(loc="best")
+        plt.savefig(f"{Location_plots}/26_CDF_Life_period_System_no_redundancy.png")
+        plt.close(fig26)
+
+
+        # -------------------------------------------------
+        # Figure 27: Number of switches in parallel
+        # -------------------------------------------------
+
+        fig27, ax27 = plt.subplots(figsize=(6.4, 4.8))
+        ax27.bar("Number of switches", df_3["N_parallel"].iloc[0], width=0.4)  # width < 0.8 = thinner bar
+        ax27.set_ylabel("Value" )
+        ax27.set_title("Number of switches in parallel")
+        ax27.grid(True)
+        plt.tight_layout()
+        plt.savefig(f"{Location_plots}/27_Number_of_switches_in_parallel.png")
+        plt.close(fig27)
