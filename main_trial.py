@@ -7,6 +7,18 @@ import time
 from datetime import datetime
 from Dataframe_saving_file import save_dataframes
 from Plotting_file import Plotting_class
+from joblib import Parallel, delayed, cpu_count
+from threadpoolctl import threadpool_limits
+
+PAR_KW = dict(
+    n_jobs=max(1, min((cpu_count() // 2) or 1, 8)) ,
+    backend="loky",
+    prefer="processes",
+    pre_dispatch=f"2*{max(1, min((cpu_count() // 2) or 1, 8)) }",
+    batch_size="auto",
+    max_nbytes="64M",
+)
+
 
 start_time = time.time()
 
@@ -162,6 +174,7 @@ S,Is,phi,P,Q,Vs = Calculation_functions_class.compute_power_flow_from_pf(P=P,
                                                                          inverter_phases= inverter_phases,
                                                                          modulation_scheme=modulation_scheme)  # Inverter Power Flow
 
+
 if design_control == "inverter":
     S,Is,phi,P,Q,Vs,N_parallel = Calculation_functions_class.compute_power_flow_from_pf_design_control_inverter(overshoot_margin_inverter,
                                                        inverter_phases=inverter_phases,
@@ -179,6 +192,7 @@ elif design_control == "switch":
     N_parallel = 1
 
 Calculation_functions_class.check_max_apparent_power_switch(S=S,Vs=Vs,max_IGBT_RMS_Current=max_IGBT_RMS_Current,inverter_phases=inverter_phases)
+
 
 #----------------------------------------#
 # Impedance calculations
@@ -200,18 +214,18 @@ r_sink  = np.ascontiguousarray(r_sink,  dtype=np.float64)
 # Temperature calculations
 #----------------------------------------#
 
-Tbr_I = np.zeros_like(r_I,     dtype=np.float64)     # [K] Temperature rise contributions of each Foster RC branch for IGBT junction → case.
-Tbr_D = np.zeros_like(r_D,     dtype=np.float64)     # [K] Temperature rise contributions of each Foster RC branch for diode junction → case.
+Tbr_I = np.zeros_like(r_I, dtype=float)     # [K] Temperature rise contributions of each Foster RC branch for IGBT junction → case.
+Tbr_D = np.zeros_like(r_D, dtype=float)     # [K] Temperature rise contributions of each Foster RC branch for diode junction → case.
 
 # Shared State
-Tbr_p = np.zeros_like(r_paste, dtype=np.float64) # [K] Temperature rise across the thermal paste (case → heatsink interface).
-Tbr_s = np.zeros_like(r_sink,  dtype=np.float64)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient).
+Tbr_p = np.zeros_like(r_paste, dtype=float) # [K] Temperature rise across the thermal paste (case → heatsink interface).
+Tbr_s = np.zeros_like(r_sink, dtype=float)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient).
 
 # Separated_state
-Tbr_p_I = np.zeros_like(r_paste, dtype=np.float64)# [K] Temperature rise across the thermal paste (case → heatsink interface) in IGBT.
-Tbr_s_I = np.zeros_like(r_sink,  dtype=np.float64)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient) in IGBT.
-Tbr_p_D = np.zeros_like(r_paste, dtype=np.float64) # [K] Temperature rise across the thermal paste (case → heatsink interface) in Diode.
-Tbr_s_D = np.zeros_like(r_sink,  dtype=np.float64)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient) in Diode.
+Tbr_p_I = np.zeros_like(r_paste, dtype=float) # [K] Temperature rise across the thermal paste (case → heatsink interface) in IGBT.
+Tbr_s_I = np.zeros_like(r_sink, dtype=float)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient) in IGBT.
+Tbr_p_D = np.zeros_like(r_paste, dtype=float) # [K] Temperature rise across the thermal paste (case → heatsink interface) in Diode.
+Tbr_s_D = np.zeros_like(r_sink, dtype=float)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient) in Diode.
 
 sec_idx_list   = []
 time_list      = []
@@ -227,6 +241,8 @@ TjI_list       = []
 TjD_list       = []
 vs_list        = []
 is_inv_list    = []
+
+start_time_looptime = time.time()
 
 if thermal_states == "separated":
 
@@ -292,11 +308,13 @@ if thermal_states == "separated":
         vs_list.append(vs_inverter)
         is_inv_list.append(is_inverter)
 
-        del m,is_I,is_D,P_sw_I,P_sw_D,P_con_I,P_con_D,P_leg,T_j_I,T_j_D,vs_inverter,is_inverter
+        del m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, T_j_I, T_j_D, vs_inverter, is_inverter
+
 
 elif thermal_states == "shared":
 
     for sec_idx, (Vs_i, Is_i, phi_i, Vdc_i, pf_i) in enumerate(zip(Vs, Is, phi, V_dc, pf)):
+
 
         t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, T_j_I, T_j_D, vs_inverter, is_inverter,Tbr_I,Tbr_D,Tbr_p,Tbr_s =\
             Electro_thermal_behavior_class.Electro_thermal_behavior_shared_thermal_state(dt=dt,         # Input = Float
@@ -361,6 +379,9 @@ elif thermal_states == "shared":
         del m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, T_j_I, T_j_D, vs_inverter, is_inverter
 
 
+end_time_looptime = time.time()
+print("Execution time inner loop:", end_time_looptime - start_time_looptime, "seconds")
+
 def cat(lst): return np.concatenate(lst)
 
 df_1 = pd.DataFrame({
@@ -382,54 +403,49 @@ df_1 = pd.DataFrame({
 
 
 
-TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = np.array(df_1["TjI_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
-TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = np.array(df_1["TjD_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
+with threadpool_limits(1):
+    (TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2),(TjD_mean, TjD_delta, t_cycle_heat_D, _) = Parallel(**PAR_KW)(
+        [delayed(Calculation_functions_class.window_stats)(temp=np.array(df_1["TjI_all"]), time_window=0.02,steps_per_sec=int(1/dt), pf=pf),
+        delayed(Calculation_functions_class.window_stats)(temp=np.array(df_1["TjD_all"]), time_window=0.02,steps_per_sec=int(1/dt), pf=pf),])
+
 
 #----------------------------------------#
-# Life cycle calculations (Its use  model from research paper and if that does not work it just uses static model of that defined model)
+# IGBT and Diode
 #----------------------------------------#
 
-#----------------------------------------#
-# IGBT
-#----------------------------------------#
 
-Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
-                                                     alpha=alpha,
-                                                     beta1=beta1,
-                                                     beta0=beta0,
-                                                     C=C,
-                                                     gamma=gamma,
-                                                     fd=fI,
-                                                     Ea=Ea,
-                                                     k_b=k_b,
-                                                     Tj_mean=TjI_mean,
-                                                     delta_Tj=TjI_delta,
-                                                     t_cycle_heat=t_cycle_heat_I,
-                                                     ar=ar )
+with threadpool_limits(1):
+    Nf_I, Nf_D = Parallel(**PAR_KW)([
+        delayed(Calculation_functions_class.Cycles_to_failure)(A=A,
+                                                               alpha=alpha,
+                                                               beta1=beta1,
+                                                               beta0=beta0,
+                                                               C=C,
+                                                               gamma=gamma,
+                                                               fd=fI,
+                                                               Ea=Ea,
+                                                               k_b=k_b,
+                                                               Tj_mean=TjI_mean,
+                                                               delta_Tj=TjI_delta,
+                                                               t_cycle_heat=t_cycle_heat_I,
+                                                               ar=ar),
 
+        delayed(Calculation_functions_class.Cycles_to_failure)(A=A,
+                                                               alpha=alpha,
+                                                               beta1=beta1,
+                                                               beta0=beta0,
+                                                               C=C,
+                                                               gamma=gamma,
+                                                               fd=fd,
+                                                               Ea=Ea,
+                                                               k_b=k_b,
+                                                               Tj_mean=TjD_mean,
+                                                               delta_Tj=TjD_delta,
+                                                               t_cycle_heat=t_cycle_heat_D,
+                                                               ar=ar),])
 
 Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_I,pf = pf,Component_max_lifetime = IGBT_max_lifetime)
-
-#----------------------------------------#
-# Diode
-#----------------------------------------#
-
-Nf_D = Calculation_functions_class.Cycles_to_failure(A=A,
-                      alpha=alpha,
-                      beta1=beta1,
-                      beta0=beta0,
-                      C=C,
-                      gamma=gamma,
-                      fd=fd,
-                      Ea=Ea,
-                      k_b=k_b,
-                      Tj_mean=TjD_mean,
-                      delta_Tj=TjD_delta,
-                      t_cycle_heat=t_cycle_heat_D,
-                      ar=ar )
-
 Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_D,pf = pf,Component_max_lifetime = Diode_max_lifetime)
-
 
 print('Life_I',Life_I)
 print('Life_D',Life_D)
@@ -447,38 +463,38 @@ print("Execution time all code:", end_time - start_time, "seconds")
 # Calculating delta T from mean T mean and heat cycle values
 #----------------------------------------#
 
-number_of_yearly_cycles ,Yearly_life_consumption_I, Tj_mean_float_I, delta_Tj_float_I,t_cycle_float = Calculation_functions_class.delta_t_calculations(A = A,                 # Input = float
-                                                                                                                                                       alpha = alpha,         # Input = float
-                                                                                                                                                       beta1 = beta1,         # Input = float
-                                                                                                                                                       beta0 = beta0,         # Input = float
-                                                                                                                                                       C = C,                 # Input = float
-                                                                                                                                                       gamma = gamma,         # Input = float
-                                                                                                                                                       fd = fI,               # Input = float
-                                                                                                                                                       Ea = Ea,               # Input = float
-                                                                                                                                                       k_b = k_b,             # Input = float
-                                                                                                                                                       Tj_mean = TjI_mean,    # Input = array
-                                                                                                                                                       t_cycle_float = t_cycle_heat_my_value, # Input = float
-                                                                                                                                                       ar = ar,               # Input = float
-                                                                                                                                                       Nf = Nf_I,             # Input = float
-                                                                                                                                                       pf = pf,               # Input = float
-                                                                                                                                                       Life = Life_I )        # Input = float
+with ((threadpool_limits(1))):
+    (number_of_yearly_cycles, Yearly_life_consumption_I,  Tj_mean_float_I, delta_Tj_float_I, t_cycle_float),(_, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_) = Parallel(**PAR_KW)([delayed(Calculation_functions_class.delta_t_calculations)(A = A,
+                                                                alpha = alpha,
+                                                                beta1 = beta1,
+                                                                beta0 = beta0,
+                                                                C = C,
+                                                                gamma = gamma,         # Input = float
+                                                                fd = fI,               # Input = float
+                                                                Ea = Ea,               # Input = float
+                                                                k_b = k_b,             # Input = float
+                                                                Tj_mean = TjI_mean,    # Input = array
+                                                                t_cycle_float = t_cycle_heat_my_value, # Input = float
+                                                                ar = ar,               # Input = float
+                                                                Nf = Nf_I,             # Input = float
+                                                                pf = pf,               # Input = float
+                                                                Life = Life_I ),        # Input = float
 
-
-_, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_ = Calculation_functions_class.delta_t_calculations(A = A,             # Input = float
-                                                                                                                     alpha = alpha,         # Input = float
-                                                                                                                     beta1 = beta1,         # Input = float
-                                                                                                                     beta0 = beta0,         # Input = float
-                                                                                                                     C = C,             # Input = float
-                                                                                                                     gamma = gamma,         # Input = float
-                                                                                                                     fd = fd,            # Input = float
-                                                                                                                     Ea = Ea,            # Input = float
-                                                                                                                     k_b = k_b,             # Input = float
-                                                                                                                     Tj_mean = TjD_mean,    # Input = array
-                                                                                                                     t_cycle_float = t_cycle_heat_my_value, # Input = float
-                                                                                                                     ar = ar,               # Input = float
-                                                                                                                     Nf = Nf_D,             # Input = float
-                                                                                                                     pf = pf,               # Input = float
-                                                                                                                     Life = Life_D )        # Input = float
+                            delayed(Calculation_functions_class.delta_t_calculations)(A = A,
+                                                                alpha = alpha,
+                                                                beta1 = beta1,
+                                                                beta0 = beta0,
+                                                                C = C,
+                                                                gamma = gamma,         # Input = float
+                                                                fd = fd,               # Input = float
+                                                                Ea = Ea,               # Input = float
+                                                                k_b = k_b,             # Input = float
+                                                                Tj_mean = TjD_mean,    # Input = array
+                                                                t_cycle_float = t_cycle_heat_my_value, # Input = float
+                                                                ar = ar,               # Input = float
+                                                                Nf = Nf_D,             # Input = float
+                                                                pf = pf,               # Input = float
+                                                                Life = Life_D ),])        # Input = float
 
 
 #----------------------------------------#
@@ -504,37 +520,48 @@ delta_Tj_float_I_normal_distribution = Calculation_functions_class.variable_inpu
 Tj_mean_float_D_normal_distribution  = Calculation_functions_class.variable_input_normal_distribution(variable = Tj_mean_float_D, normal_distribution = 0.05, number_of_samples = 10000)
 delta_Tj_float_D_normal_distribution = Calculation_functions_class.variable_input_normal_distribution(variable = delta_Tj_float_D, normal_distribution = 0.05, number_of_samples = 10000)
 
-Nf_I_normal_distribution = Calculation_functions_class.Cycles_to_failure(A=A_normal_distribution,
-                                                                         alpha=alpha_normal_distribution,
-                                                                         beta1=beta1_normal_distribution,
-                                                                         beta0=beta0_normal_distribution,
-                                                                         C=C_normal_distribution,
-                                                                         gamma=gamma_normal_distribution,
-                                                                         fd=fI_normal_distribution,
-                                                                         Ea=Ea_normal_distribution,
-                                                                         k_b=k_b_normal_distribution,
-                                                                         Tj_mean=Tj_mean_float_I_normal_distribution,
-                                                                         delta_Tj=delta_Tj_float_I_normal_distribution,
-                                                                         t_cycle_heat=t_cycle_float_normal_distribution,
-                                                                         ar=ar_normal_distribution )
 
-Nf_D_normal_distribution = Calculation_functions_class.Cycles_to_failure(A=A_normal_distribution,
-                                                                         alpha=alpha_normal_distribution,
-                                                                         beta1=beta1_normal_distribution,
-                                                                         beta0=beta0_normal_distribution,
-                                                                         C=C_normal_distribution,
-                                                                         gamma=gamma_normal_distribution,
-                                                                         fd=fd_normal_distribution,
-                                                                         Ea=Ea_normal_distribution,
-                                                                         k_b=k_b_normal_distribution,
-                                                                         Tj_mean=Tj_mean_float_D_normal_distribution,
-                                                                         delta_Tj=delta_Tj_float_D_normal_distribution,
-                                                                         t_cycle_heat=t_cycle_float_normal_distribution,
-                                                                         ar=ar_normal_distribution )
+
+with threadpool_limits(1):
+    Nf_I_normal_distribution, Nf_D_normal_distribution = Parallel(**PAR_KW)([
+        delayed(Calculation_functions_class.Cycles_to_failure)(
+            A = A_normal_distribution,
+            alpha = alpha_normal_distribution,
+            beta1 = beta1_normal_distribution,
+            beta0 = beta0_normal_distribution,
+            C = C_normal_distribution,
+            gamma = gamma_normal_distribution,
+            fd = fI_normal_distribution,
+            Ea = Ea_normal_distribution,
+            k_b = k_b_normal_distribution,
+            Tj_mean = Tj_mean_float_I_normal_distribution,
+            delta_Tj = delta_Tj_float_I_normal_distribution,
+            t_cycle_heat = t_cycle_float_normal_distribution,
+            ar = ar_normal_distribution
+        ),
+        delayed(Calculation_functions_class.Cycles_to_failure)(
+            A = A_normal_distribution,
+            alpha = alpha_normal_distribution,
+            beta1 = beta1_normal_distribution,
+            beta0 = beta0_normal_distribution,
+            C = C_normal_distribution,
+            gamma = gamma_normal_distribution,
+            fd = fd_normal_distribution,
+            Ea = Ea_normal_distribution,
+            k_b = k_b_normal_distribution,
+            Tj_mean = Tj_mean_float_D_normal_distribution,
+            delta_Tj = delta_Tj_float_D_normal_distribution,
+            t_cycle_heat = t_cycle_float_normal_distribution,
+            ar = ar_normal_distribution
+        ),
+    ])
 
 
 Life_period_I_normal_distribution = Calculation_functions_class.Lifecycle_normal_distribution_calculation_acceleration_factor(Nf=Nf_I_normal_distribution, f=f, Component_max_lifetime=IGBT_max_lifetime)
 Life_period_D_normal_distribution = Calculation_functions_class.Lifecycle_normal_distribution_calculation_acceleration_factor(Nf=Nf_D_normal_distribution, f=f, Component_max_lifetime=Diode_max_lifetime)
+
+
+
 Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distribution,Life_period_D_normal_distribution)
 
 

@@ -2,22 +2,24 @@ import numpy as np
 from numba import njit
 from Calculation_functions_file import Calculation_functions_class
 
-@njit(fastmath=True)
-def thermal_rollout_shared_thermal_state(P_I,     # Input = ndarray
-                                         P_D,     # Input = ndarray
-                                         P_leg,   # Input = ndarray
-                                         alpha_I, # Input = ndarray
-                                         r_I,     # Input = ndarray
-                                         alpha_D, # Input = ndarray
-                                         r_D,     # Input = ndarray
-                                         alpha_p, # Input = ndarray
-                                         r_paste, # Input = ndarray
-                                         alpha_s, # Input = ndarray
+Calculation_functions = Calculation_functions_class()
+
+@njit(fastmath=True, cache=True)
+def thermal_rollout_shared_thermal_state(P_I,  # Input = ndarray
+                                         P_D,  # Input = ndarray
+                                         P_leg,  # Input = ndarray
+                                         alpha_I,  # Input = ndarray
+                                         r_I,  # Input = ndarray
+                                         alpha_D,  # Input = ndarray
+                                         r_D,  # Input = ndarray
+                                         alpha_p,  # Input = ndarray
+                                         r_paste,  # Input = ndarray
+                                         alpha_s,  # Input = ndarray
                                          r_sink,  # Input = ndarray
-                                         Tamb,    # Input = float
-                                         Tbr_I,   # Input/Output = ndarray
-                                         Tbr_D,   # Input/Output = ndarray
-                                         Tbr_p,   # Input/Output = ndarray
+                                         Tamb,  # Input = float
+                                         Tbr_I,  # Input/Output = ndarray
+                                         Tbr_D,  # Input/Output = ndarray
+                                         Tbr_p,  # Input/Output = ndarray
                                          Tbr_s):  # Input/Output = ndarray
 
     """
@@ -90,10 +92,11 @@ def thermal_rollout_shared_thermal_state(P_I,     # Input = ndarray
     T_j_D = np.empty(n, dtype=np.float64)
 
     # Precompute per-branch gains k = (1 - alpha) * r
-    kI = (1.0 - alpha_I) * r_I
-    kD = (1.0 - alpha_D) * r_D
-    kp = (1.0 - alpha_p) * r_paste
-    ks = (1.0 - alpha_s) * r_sink
+
+    kI = (1 - alpha_I) * r_I
+    kD = (1 - alpha_D) * r_D
+    kp = (1 - alpha_p) * r_paste
+    ks = (1 - alpha_s) * r_sink
 
     for k in range(n):
         # IGBT junction→case branches (driven by P_I[k])
@@ -113,16 +116,16 @@ def thermal_rollout_shared_thermal_state(P_I,     # Input = ndarray
             Tbr_s[i] = Tbr_s[i] * alpha_s[i] + ks[i] * P_leg[k]
 
         # Sums for junction temperatures
-        shared_rise = 0.0
+        shared_rise = np.float64(0.0)
         for i in range(alpha_p.size):
             shared_rise += Tbr_p[i]
         for i in range(alpha_s.size):
             shared_rise += Tbr_s[i]
 
-        sum_I = 0.0
+        sum_I = np.float64(0.0)
         for i in range(alpha_I.size):
             sum_I += Tbr_I[i]
-        sum_D = 0.0
+        sum_D = np.float64(0.0)
         for i in range(alpha_D.size):
             sum_D += Tbr_D[i]
 
@@ -132,26 +135,24 @@ def thermal_rollout_shared_thermal_state(P_I,     # Input = ndarray
     return T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p, Tbr_s
 
 
-
-
-@njit(fastmath=True)
-def thermal_rollout_separated_thermal_state(P_I,        # ndarray
-                                            P_D,        # ndarray
-                                            alpha_I,    # ndarray
-                                            r_I,        # ndarray
-                                            alpha_D,    # ndarray
-                                            r_D,        # ndarray
-                                            alpha_p,    # ndarray
-                                            r_paste,    # ndarray
-                                            alpha_s,    # ndarray
-                                            r_sink,     # ndarray
-                                            Tamb,       # float
-                                            Tbr_I,      # ndarray (in/out) IGBT junction→case
-                                            Tbr_D,      # ndarray (in/out) Diode junction→case
-                                            Tbr_p_I,    # ndarray (in/out) IGBT paste (case→sink)
-                                            Tbr_s_I,    # ndarray (in/out) IGBT sink  (sink→ambient)
-                                            Tbr_p_D,    # ndarray (in/out) Diode paste (case→sink)
-                                            Tbr_s_D):     # ndarray (in/out) Diode sink  (sink→ambient)
+@njit(fastmath=True, cache=True)
+def thermal_rollout_separated_thermal_state(P_I,  # ndarray
+                                            P_D,  # ndarray
+                                            alpha_I,  # ndarray
+                                            r_I,  # ndarray
+                                            alpha_D,  # ndarray
+                                            r_D,  # ndarray
+                                            alpha_p,  # ndarray
+                                            r_paste,  # ndarray
+                                            alpha_s,  # ndarray
+                                            r_sink,  # ndarray
+                                            Tamb,  # float
+                                            Tbr_I,  # ndarray (in/out) IGBT junction→case
+                                            Tbr_D,  # ndarray (in/out) Diode junction→case
+                                            Tbr_p_I,  # ndarray (in/out) IGBT paste (case→sink)
+                                            Tbr_s_I,  # ndarray (in/out) IGBT sink  (sink→ambient)
+                                            Tbr_p_D,  # ndarray (in/out) Diode paste (case→sink)
+                                            Tbr_s_D):  # ndarray (in/out) Diode sink  (sink→ambient)
 
     """
     Advance thermal RC branch states over one 1-second simulation window,
@@ -231,10 +232,11 @@ def thermal_rollout_separated_thermal_state(P_I,        # ndarray
     T_j_D = np.empty(n, dtype=np.float64)
 
     # Precompute per-branch gains k = (1 - alpha) * r
-    kI = (1.0 - alpha_I) * r_I
-    kD = (1.0 - alpha_D) * r_D
-    kp = (1.0 - alpha_p) * r_paste
-    ks = (1.0 - alpha_s) * r_sink
+
+    kI = (1 - alpha_I) * r_I
+    kD = (1 - alpha_D) * r_D
+    kp = (1 - alpha_p) * r_paste
+    ks = (1 - alpha_s) * r_sink
 
     for k in range(n):
         # IGBT junction→case branches
@@ -262,24 +264,24 @@ def thermal_rollout_separated_thermal_state(P_I,        # ndarray
             Tbr_s_D[i] = Tbr_s_D[i] * alpha_s[i] + ks[i] * P_D[k]
 
         # Sums for junction temperatures (independent paths)
-        sum_I = 0.0
+        sum_I = np.float64(0.0)
         for i in range(alpha_I.size):
             sum_I += Tbr_I[i]
-        sum_D = 0.0
+        sum_D = np.float64(0.0)
         for i in range(alpha_D.size):
             sum_D += Tbr_D[i]
 
-        rise_p_I = 0.0
+        rise_p_I = np.float64(0.0)
         for i in range(alpha_p.size):
             rise_p_I += Tbr_p_I[i]
-        rise_s_I = 0.0
+        rise_s_I = np.float64(0.0)
         for i in range(alpha_s.size):
             rise_s_I += Tbr_s_I[i]
 
-        rise_p_D = 0.0
+        rise_p_D = np.float64(0.0)
         for i in range(alpha_p.size):
             rise_p_D += Tbr_p_D[i]
-        rise_s_D = 0.0
+        rise_s_D = np.float64(0.0)
         for i in range(alpha_s.size):
             rise_s_D += Tbr_s_D[i]
 
@@ -289,44 +291,43 @@ def thermal_rollout_separated_thermal_state(P_I,        # ndarray
     return T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p_I, Tbr_s_I, Tbr_p_D, Tbr_s_D
 
 
-
 class Electro_thermal_behavior_class:
 
     @staticmethod
-    def Electro_thermal_behavior_shared_thermal_state(dt,        # float
-                                                      Vs,        # float
-                                                      Is,        # float
-                                                      phi,       # float
-                                                      omega,     # float
-                                                      M,         # float
-                                                      V_dc,      # float
-                                                      t_on,      # float
-                                                      t_off,     # float
-                                                      f_sw,      # float
-                                                      I_ref,     # float
-                                                      V_ref,     # float
-                                                      Err_D,     # float
-                                                      R_IGBT,    # float
+    def Electro_thermal_behavior_shared_thermal_state(dt,  # float
+                                                      Vs,  # float
+                                                      Is,  # float
+                                                      phi,  # float
+                                                      omega,  # float
+                                                      M,  # float
+                                                      V_dc,  # float
+                                                      t_on,  # float
+                                                      t_off,  # float
+                                                      f_sw,  # float
+                                                      I_ref,  # float
+                                                      V_ref,  # float
+                                                      Err_D,  # float
+                                                      R_IGBT,  # float
                                                       V_0_IGBT,  # float
-                                                      pf,        # float
-                                                      R_D,       # float
-                                                      V_0_D,     # float
-                                                      alpha_I,   # ndarray
-                                                      alpha_D,   # ndarray
-                                                      alpha_p,   # ndarray
-                                                      alpha_s,   # ndarray
-                                                      r_I,       # ndarray
-                                                      r_D,       # ndarray
-                                                      r_paste,   # ndarray
-                                                      r_sink,    # ndarray
-                                                      Tamb,      # float
-                                                      Tbr_I,     # ndarray
-                                                      Tbr_D,     # ndarray
-                                                      Tbr_p,     # ndarray
-                                                      Tbr_s ):  # ndarray
+                                                      pf,  # float
+                                                      R_D,  # float
+                                                      V_0_D,  # float
+                                                      alpha_I,  # ndarray
+                                                      alpha_D,  # ndarray
+                                                      alpha_p,  # ndarray
+                                                      alpha_s,  # ndarray
+                                                      r_I,  # ndarray
+                                                      r_D,  # ndarray
+                                                      r_paste,  # ndarray
+                                                      r_sink,  # ndarray
+                                                      Tamb,  # float
+                                                      Tbr_I,  # ndarray
+                                                      Tbr_D,  # ndarray
+                                                      Tbr_p,  # ndarray
+                                                      Tbr_s):  # ndarray
 
         """
-        
+
         Simulate one-second electro-thermal behavior of a single inverter leg and return
         electrical waveforms, loss components and device junction temperatures.
 
@@ -442,39 +443,19 @@ class Electro_thermal_behavior_class:
         """
 
         # time vector for this 1-second window
-        t = np.arange(0.0, 1.0, dt, dtype=np.float64)  # Create an array of time instants [s] (1000 steps) from 0 to 1.0 second. This defines the simulation horizon for that particular pf, P and Q value.
+        t = np.arange(0.0, 1.0, dt,dtype=np.float64)  # Create an array of time instants [s] (1000 steps) from 0 to 1.0 second. This defines the simulation horizon for that particular pf, P and Q value.
 
-        vs_inverter, is_inverter = Calculation_functions_class().Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi, t=t, omega=omega)
-        m                        = Calculation_functions_class().Instantaneous_modulation(M=M,omega=omega,t=t,phi=phi)
-        is_I, is_D               = Calculation_functions_class().IGBT_and_diode_current(Is=Is, t=t, m=m,omega=omega)
-        P_sw_I, P_sw_D           = Calculation_functions_class().Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off, f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref, Err_D=Err_D)
-        P_con_I, P_con_D         = Calculation_functions_class().Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT, M=M, pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
+        vs_inverter, is_inverter = Calculation_functions.Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi,t=t, omega=omega)
+        m = Calculation_functions.Instantaneous_modulation(M=M, omega=omega, t=t, phi=phi)
+        is_I, is_D = Calculation_functions.IGBT_and_diode_current(Is=Is, t=t, m=m, omega=omega)
+        P_sw_I, P_sw_D = Calculation_functions.Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off,f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref,Err_D=Err_D)
+        P_con_I, P_con_D = Calculation_functions.Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT,M=M, pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
 
-        P_I = np.maximum(P_sw_I + P_con_I, 0.0)   # [W] Total instantaneous IGBT power loss [W] = switching + conduction
-        P_D = np.maximum(P_sw_D + P_con_D, 0.0)   # [W] Total instantaneous diode power loss [W] = switching + conduction
-        P_leg = P_I + P_D                             # [W] Total leg power loss [W] = combined IGBT + diode losses
+        P_I = np.ascontiguousarray(np.maximum(P_sw_I + P_con_I, 0.0), dtype=np.float64)  # [W] Total instantaneous IGBT power loss [W] = switching + conduction
+        P_D = np.ascontiguousarray(np.maximum(P_sw_D + P_con_D, 0.0), dtype=np.float64)  # [W] Total instantaneous diode power loss [W] = switching + conduction
+        P_leg = np.ascontiguousarray(P_I + P_D, dtype=np.float64)  # [W] Total leg power loss [W] = combined IGBT + diode losses
 
-        # Ensure all arrays for the JIT kernel are float64 & contiguous
-        alpha_I = np.ascontiguousarray(alpha_I, dtype=np.float64)
-        alpha_D = np.ascontiguousarray(alpha_D, dtype=np.float64)
-        alpha_p = np.ascontiguousarray(alpha_p, dtype=np.float64)
-        alpha_s = np.ascontiguousarray(alpha_s, dtype=np.float64)
 
-        r_I     = np.ascontiguousarray(r_I,     dtype=np.float64)
-        r_D     = np.ascontiguousarray(r_D,     dtype=np.float64)
-        r_paste = np.ascontiguousarray(r_paste, dtype=np.float64)
-        r_sink  = np.ascontiguousarray(r_sink,  dtype=np.float64)
-
-        Tbr_I   = np.ascontiguousarray(Tbr_I,   dtype=np.float64)
-        Tbr_D   = np.ascontiguousarray(Tbr_D,   dtype=np.float64)
-        Tbr_p   = np.ascontiguousarray(Tbr_p,   dtype=np.float64)
-        Tbr_s   = np.ascontiguousarray(Tbr_s,   dtype=np.float64)
-
-        P_I   = np.ascontiguousarray(P_I,   dtype=np.float64)
-        P_D   = np.ascontiguousarray(P_D,   dtype=np.float64)
-        P_leg = np.ascontiguousarray(P_leg, dtype=np.float64)
-
-        # Advance thermal RC states over this 1-second window in compiled code
         T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p, Tbr_s = thermal_rollout_shared_thermal_state(P_I=P_I,
                                                                                         P_D=P_D,
                                                                                         P_leg=P_leg,
@@ -486,11 +467,11 @@ class Electro_thermal_behavior_class:
                                                                                         r_paste=r_paste,
                                                                                         alpha_s=alpha_s,
                                                                                         r_sink=r_sink,
-                                                                                        Tamb = float(Tamb),
-                                                                                        Tbr_I = Tbr_I.copy(),
-                                                                                        Tbr_D = Tbr_D.copy(),
-                                                                                        Tbr_p = Tbr_p.copy(),
-                                                                                        Tbr_s = Tbr_s.copy())
+                                                                                        Tamb=Tamb,
+                                                                                        Tbr_I=Tbr_I,
+                                                                                        Tbr_D=Tbr_D,
+                                                                                        Tbr_p=Tbr_p,
+                                                                                        Tbr_s=Tbr_s)
 
         return (t,
                 m,
@@ -508,44 +489,42 @@ class Electro_thermal_behavior_class:
                 Tbr_I,
                 Tbr_D,
                 Tbr_p,
-                Tbr_s )
-
-
+                Tbr_s)
 
     @staticmethod
-    def Electro_thermal_behavior_separated_thermal_state(dt,        # float
-                                                         Vs,        # float
-                                                         Is,        # float
-                                                         phi,       # float
-                                                         omega,     # float
-                                                         M,         # float
-                                                         V_dc,      # float
-                                                         t_on,      # float
-                                                         t_off,     # float
-                                                         f_sw,      # float
-                                                         I_ref,     # float
-                                                         V_ref,     # float
-                                                         Err_D,     # float
-                                                         R_IGBT,    # float
+    def Electro_thermal_behavior_separated_thermal_state(dt,  # float
+                                                         Vs,  # float
+                                                         Is,  # float
+                                                         phi,  # float
+                                                         omega,  # float
+                                                         M,  # float
+                                                         V_dc,  # float
+                                                         t_on,  # float
+                                                         t_off,  # float
+                                                         f_sw,  # float
+                                                         I_ref,  # float
+                                                         V_ref,  # float
+                                                         Err_D,  # float
+                                                         R_IGBT,  # float
                                                          V_0_IGBT,  # float
-                                                         pf,        # float
-                                                         R_D,       # float
-                                                         V_0_D,     # float
-                                                         alpha_I,   # ndarray
-                                                         alpha_D,   # ndarray
-                                                         alpha_p,   # ndarray
-                                                         alpha_s,   # ndarray
-                                                         r_I,       # ndarray
-                                                         r_D,       # ndarray
-                                                         r_paste,   # ndarray
-                                                         r_sink,    # ndarray
-                                                         Tamb,      # float
-                                                         Tbr_I,     # ndarray
-                                                         Tbr_D,     # ndarray
-                                                         Tbr_p_I,   # ndarray
-                                                         Tbr_s_I,   # ndarray
-                                                         Tbr_p_D,   # ndarray
-                                                         Tbr_s_D ): # ndarray
+                                                         pf,  # float
+                                                         R_D,  # float
+                                                         V_0_D,  # float
+                                                         alpha_I,  # ndarray
+                                                         alpha_D,  # ndarray
+                                                         alpha_p,  # ndarray
+                                                         alpha_s,  # ndarray
+                                                         r_I,  # ndarray
+                                                         r_D,  # ndarray
+                                                         r_paste,  # ndarray
+                                                         r_sink,  # ndarray
+                                                         Tamb,  # float
+                                                         Tbr_I,  # ndarray
+                                                         Tbr_D,  # ndarray
+                                                         Tbr_p_I,  # ndarray
+                                                         Tbr_s_I,  # ndarray
+                                                         Tbr_p_D,  # ndarray
+                                                         Tbr_s_D):  # ndarray
 
         """
         Simulate one-second electro-thermal behavior of a single inverter leg and return
@@ -670,56 +649,38 @@ class Electro_thermal_behavior_class:
         # time vector for this 1-second window
         t = np.arange(0.0, 1.0, dt,dtype=np.float64)  # Create an array of time instants [s] (1000 steps) from 0 to 1.0 second. This defines the simulation horizon for that particular pf, P and Q value.
 
-        vs_inverter, is_inverter = Calculation_functions_class().Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi,t=t, omega=omega)
-        m = Calculation_functions_class().Instantaneous_modulation(M=M, omega=omega, t=t, phi=phi)
-        is_I, is_D = Calculation_functions_class().IGBT_and_diode_current(Is=Is, t=t, m=m, omega=omega)
-        P_sw_I, P_sw_D = Calculation_functions_class().Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off,f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref,Err_D=Err_D)
-        P_con_I, P_con_D = Calculation_functions_class().Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT,M=M, pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
+        vs_inverter, is_inverter = Calculation_functions.Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi,t=t, omega=omega)
+        m = Calculation_functions.Instantaneous_modulation(M=M, omega=omega, t=t, phi=phi)
+        is_I, is_D = Calculation_functions.IGBT_and_diode_current(Is=Is, t=t, m=m, omega=omega)
+        P_sw_I, P_sw_D = Calculation_functions.Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off,f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref,Err_D=Err_D)
+        P_con_I, P_con_D = Calculation_functions.Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT,M=M, pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
 
-        P_I = np.maximum(P_sw_I + P_con_I, 0.0)  # [W] Total instantaneous IGBT power loss [W] = switching + conduction
-        P_D = np.maximum(P_sw_D + P_con_D, 0.0)  # [W] Total instantaneous diode power loss [W] = switching + conduction
-        P_leg = P_I + P_D  # [W] Total leg power loss [W] = combined IGBT + diode losses
+        P_I = np.ascontiguousarray(np.maximum(P_sw_I + P_con_I, 0.0), dtype=np.float64) # [W] Total instantaneous IGBT power loss [W] = switching + conduction
+        P_D = np.ascontiguousarray(np.maximum(P_sw_D + P_con_D, 0.0), dtype=np.float64)  # [W] Total instantaneous diode power loss [W] = switching + conduction
+        P_leg = np.ascontiguousarray(P_I + P_D, dtype=np.float64)  # [W] Total leg power loss [W] = combined IGBT + diode losses
 
-        # Ensure all arrays for the JIT kernel are float64 & contiguous
-        alpha_I = np.ascontiguousarray(alpha_I, dtype=np.float64)
-        alpha_D = np.ascontiguousarray(alpha_D, dtype=np.float64)
-        alpha_p = np.ascontiguousarray(alpha_p, dtype=np.float64)
-        alpha_s = np.ascontiguousarray(alpha_s, dtype=np.float64)
 
-        r_I = np.ascontiguousarray(r_I, dtype=np.float64)
-        r_D = np.ascontiguousarray(r_D, dtype=np.float64)
-        r_paste = np.ascontiguousarray(r_paste, dtype=np.float64)
-        r_sink = np.ascontiguousarray(r_sink, dtype=np.float64)
-
-        Tbr_I = np.ascontiguousarray(Tbr_I, dtype=np.float64)
-        Tbr_D = np.ascontiguousarray(Tbr_D, dtype=np.float64)
-        Tbr_p_I = np.ascontiguousarray(Tbr_p_I, dtype=np.float64)
-        Tbr_s_I = np.ascontiguousarray(Tbr_s_I, dtype=np.float64)
-        Tbr_p_D = np.ascontiguousarray(Tbr_p_D, dtype=np.float64)
-        Tbr_s_D = np.ascontiguousarray(Tbr_s_D, dtype=np.float64)
-
-        P_I = np.ascontiguousarray(P_I, dtype=np.float64)
-        P_D = np.ascontiguousarray(P_D, dtype=np.float64)
-        P_leg = np.ascontiguousarray(P_D, dtype=np.float64)
+        
 
         # Advance thermal RC states with separated paths
-        T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p_I, Tbr_s_I, Tbr_p_D, Tbr_s_D = thermal_rollout_separated_thermal_state(P_I=P_I,
-                                                                                                                 P_D=P_D,
-                                                                                                                 alpha_I=alpha_I,
-                                                                                                                 r_I=r_I,
-                                                                                                                 alpha_D=alpha_D,
-                                                                                                                 r_D=r_D,
-                                                                                                                 alpha_p=alpha_p,
-                                                                                                                 r_paste=r_paste,
-                                                                                                                 alpha_s=alpha_s,
-                                                                                                                 r_sink=r_sink,
-                                                                                                                 Tamb=float(Tamb),
-                                                                                                                 Tbr_I=Tbr_I.copy(),
-                                                                                                                 Tbr_D=Tbr_D.copy(),
-                                                                                                                 Tbr_p_I=Tbr_p_I.copy(),
-                                                                                                                 Tbr_s_I=Tbr_s_I.copy(),
-                                                                                                                 Tbr_p_D=Tbr_p_D.copy(),
-                                                                                                                 Tbr_s_D=Tbr_s_D.copy())
+        T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p_I, Tbr_s_I, Tbr_p_D, Tbr_s_D = thermal_rollout_separated_thermal_state(
+            P_I=P_I,
+            P_D=P_D,
+            alpha_I=alpha_I,
+            r_I=r_I,
+            alpha_D=alpha_D,
+            r_D=r_D,
+            alpha_p=alpha_p,
+            r_paste=r_paste,
+            alpha_s=alpha_s,
+            r_sink=r_sink,
+            Tamb=Tamb,
+            Tbr_I=Tbr_I,
+            Tbr_D=Tbr_D,
+            Tbr_p_I=Tbr_p_I,
+            Tbr_s_I=Tbr_s_I,
+            Tbr_p_D=Tbr_p_D,
+            Tbr_s_D=Tbr_s_D)
 
         return (t,
                 m,
@@ -739,5 +700,5 @@ class Electro_thermal_behavior_class:
                 Tbr_p_I,
                 Tbr_s_I,
                 Tbr_p_D,
-                Tbr_s_D )
+                Tbr_s_D)
 

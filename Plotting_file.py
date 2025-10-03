@@ -37,7 +37,6 @@ class Plotting_class:
         # -------------------------------------------------
 
 
-
         fig1, ax1 = plt.subplots(figsize=(6.4, 4.8))
         ax1.plot(time_col_df2, df_2["TjI_mean"] - 273.15, label="IGBT")
         ax1.plot(time_col_df2, df_2["TjD_mean"] - 273.15, label="Diode")
@@ -216,9 +215,9 @@ class Plotting_class:
         # -------------------------------------------------
         # Figure 11: IGBT and Diode temperature
         # -------------------------------------------------
-
+        '''
         # Keep 1 of every 100 points to reduce load
-        Load_reduction_number = 1
+        Load_reduction_number = 1000
         df_down = df_1.iloc[::Load_reduction_number].copy()
 
         # Prepare time axis with auto-scaling
@@ -245,6 +244,7 @@ class Plotting_class:
         ax11.grid(True)
         plt.savefig(f"{Location_plots}/11_IGBT_and_Diode_instantaneous_temperature_full_time_scale.png")
         plt.close(fig11)
+        '''
 
         # -------------------------------------------------
         # Prepare time axis for df_3

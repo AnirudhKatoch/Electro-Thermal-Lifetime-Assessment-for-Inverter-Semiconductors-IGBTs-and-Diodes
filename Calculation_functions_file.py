@@ -1,6 +1,10 @@
 import numpy as np
 from scipy.special import lambertw
 import numexpr as ne
+import gc, ctypes, sys
+import os, re, glob
+import pyarrow.parquet as pq
+import pandas as pd
 
 class Calculation_functions_class:
 
@@ -1158,3 +1162,153 @@ class Calculation_functions_class:
         Life_period = Component_max_lifetime / AF
 
         return Life_period
+
+    @staticmethod
+    def free_ram_now():
+
+        """
+        Function to explicitly free RAM
+        Calls Python's garbage collector and, on Linux systems, forces glibc to
+        return freed memory pages to the operating system.
+        """
+
+        gc.collect()
+        try:
+            if sys.platform.startswith("linux"):
+                ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except Exception:
+            pass
+
+    @staticmethod
+    def cat(lst):
+        """
+        # Function to concatenate list of numpy arrays into a single numpy array
+        """
+        return np.concatenate(lst)
+
+    @staticmethod
+    def find_sorted_files(base_dir: str, prefix: str, recursive: bool = False):
+        """
+        Find parquet files named '<prefix>_*.parquet' under base_dir.
+        - If recursive=True, search subdirectories too.
+        - Returns files sorted by numeric chunk suffix.
+        """
+
+        def _extract_chunk_no(path: str, prefix: str) -> int:
+            """
+            Extract trailing chunk number from '<prefix>_<N>.parquet' (e.g., 'df_1_12.parquet').
+            Returns a large number for non-matching names so they sort to the end.
+            """
+            m = re.search(rf"{re.escape(prefix)}_(\d+)\.parquet$", os.path.basename(path))
+            return int(m.group(1)) if m else 10 ** 9
+
+        pattern = os.path.join(base_dir, "**" if recursive else "", f"{prefix}_*.parquet")
+        files = glob.glob(pattern, recursive=recursive)
+        files = [f for f in files if os.path.isfile(f)]
+        files.sort(key=lambda p: _extract_chunk_no(p, prefix))
+        return files
+
+    @staticmethod
+    def merge_parquet_files(files, out_path: str, compression: str = "zstd", validate_schema: bool = True):
+        """
+        Stream-merge multiple parquet files into a single parquet at out_path.
+
+        - validate_schema=True: require identical schemas; raises if mismatch.
+          If False, will write using the first file's schema and attempt to select
+          those columns from subsequent files (columns missing will raise).
+        """
+        if not files:
+            # print(f"[merge] No input files found for {out_path}. Skipping.")
+            return
+
+        # Schema from the first file
+        first_pf = pq.ParquetFile(files[0])
+        base_schema = first_pf.schema_arrow
+
+        if validate_schema:
+            # Ensure all schemas match exactly
+            for fp in files[1:]:
+                sch = pq.ParquetFile(fp).schema_arrow
+                if sch != base_schema:
+                    raise ValueError(f"[merge] Schema mismatch between '{files[0]}' and '{fp}'. "
+                                     f"Set validate_schema=False to attempt a permissive merge.")
+            writer = pq.ParquetWriter(out_path, base_schema, compression=compression)
+            total_rows = 0
+            try:
+                for fp in files:
+                    pf = pq.ParquetFile(fp)
+                    for batch in pf.iter_batches():
+                        writer.write_batch(batch)
+                        total_rows += batch.num_rows
+            finally:
+                writer.close()
+            # print(f"[merge] Wrote {total_rows} rows to: {out_path}")
+            return
+
+        # Permissive path: use columns from the first file's schema
+        base_cols = [f.name for f in base_schema]
+        writer = pq.ParquetWriter(out_path, base_schema, compression=compression)
+        total_rows = 0
+        try:
+            for fp in files:
+                pf = pq.ParquetFile(fp)
+                # Build a Table with the base columns only (order preserved)
+                # tbl = pf.read(columns=base_cols)
+                # Stream out in record batches so we keep memory flat
+                # for batch in tbl.to_batches():
+                #    writer.write_batch(batch)
+                #    total_rows += batch.num_rows
+                for batch in pf.iter_batches(columns=base_cols):
+                    writer.write_batch(batch)
+        finally:
+            writer.close()
+
+    @staticmethod
+    def latest_chunk_file(base_dir: str, prefix: str, recursive: bool = False):
+        """
+        Return the full path to the latest (highest chunk number) file for a prefix,
+        or None if none found.
+        """
+
+        def find_sorted_files(base_dir: str, prefix: str, recursive: bool = False):
+            """
+            Find parquet files named '<prefix>_*.parquet' under base_dir.
+            - If recursive=True, search subdirectories too.
+            - Returns files sorted by numeric chunk suffix.
+            """
+
+            def _extract_chunk_no(path: str, prefix: str) -> int:
+                """
+                Extract trailing chunk number from '<prefix>_<N>.parquet' (e.g., 'df_1_12.parquet').
+                Returns a large number for non-matching names so they sort to the end.
+                """
+                m = re.search(rf"{re.escape(prefix)}_(\d+)\.parquet$", os.path.basename(path))
+                return int(m.group(1)) if m else 10 ** 9
+
+            pattern = os.path.join(base_dir, "**" if recursive else "", f"{prefix}_*.parquet")
+            files = glob.glob(pattern, recursive=recursive)
+            files = [f for f in files if os.path.isfile(f)]
+            files.sort(key=lambda p: _extract_chunk_no(p, prefix))
+            return files
+
+        files = find_sorted_files(base_dir, prefix, recursive=recursive)
+        return files[-1] if files else None
+
+    @staticmethod
+    def load_latest_df(prefix, base_dir):
+        """
+        Find and load the parquet with the highest chunk number for a given prefix (df_1, df_2, …).
+        Expects chunk files in subfolder: base_dir/prefix/
+        """
+        chunk_dir = os.path.join(base_dir, prefix)  # e.g., Location_dataframes/df_1
+        files = glob.glob(os.path.join(chunk_dir, f"{prefix}_*.parquet"))
+        if not files:
+            raise FileNotFoundError(f"No {prefix}_*.parquet files found in {chunk_dir}")
+
+        def extract_chunk_no(path):
+            m = re.search(rf"{prefix}_(\d+)\.parquet$", os.path.basename(path))
+            return int(m.group(1)) if m else -1
+
+        latest_file = max(files, key=extract_chunk_no)
+        # print(f"[INFO] Loading latest {prefix} file: {latest_file}")
+        return pd.read_parquet(latest_file, engine="pyarrow")
