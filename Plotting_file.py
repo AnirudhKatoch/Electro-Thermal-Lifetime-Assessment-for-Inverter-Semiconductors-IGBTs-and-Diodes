@@ -90,8 +90,11 @@ class Plotting_class:
         # -------------------------------------------------
 
         # Define the time window
-        t_start = df_1["time_s"].max() - 0.04 + 0.001
-        t_end = df_1["time_s"].max() - 0.02 + 0.001
+        t_start = df_1["time_s"].max() - 0.04 + df_2["dt"].iloc[0]
+        t_end = df_1["time_s"].max() - 0.02 + df_2["dt"].iloc[0]
+
+        print("t_start",t_start)
+        print("t_end",t_end)
 
         df_slice = df_1[(df_1["time_s"] >= t_start) & (df_1["time_s"] <= t_end)].copy()
         # Shift time so it starts at 0

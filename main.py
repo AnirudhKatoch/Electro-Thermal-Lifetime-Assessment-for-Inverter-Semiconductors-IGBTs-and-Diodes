@@ -12,6 +12,8 @@ start_time = time.time()
 
 Input_parameters = Input_parameters_class()
 
+Calculation_functions_class = Calculation_functions_class()
+
 '################################################################################################################################################################'
 'Input Parameters'
 '################################################################################################################################################################'
@@ -152,15 +154,15 @@ Calculation_functions_class.check_vce(overshoot_margin, V_dc, max_V_CE)
 # Calculate power flow equations
 #----------------------------------------#
 
-S,Is,phi,P,Q,Vs = Calculation_functions_class.compute_power_flow_from_pf(P=P,
-                                                                         Q=Q,
+S,Is,phi,P,Q,Vs = Calculation_functions_class.compute_power_flow_from_pf(P = P,
+                                                                         Q = Q,
                                                                          V_dc = V_dc,
-                                                                         pf=pf,
-                                                                         Vs=Vs,
-                                                                         M=M,
-                                                                         single_phase_inverter_topology=single_phase_inverter_topology,
-                                                                         inverter_phases= inverter_phases,
-                                                                         modulation_scheme=modulation_scheme)  # Inverter Power Flow
+                                                                         pf = pf,
+                                                                         Vs = Vs,
+                                                                         M = M,
+                                                                         single_phase_inverter_topology = single_phase_inverter_topology,
+                                                                         inverter_phases = inverter_phases,
+                                                                         modulation_scheme = modulation_scheme )  # Inverter Power Flow
 
 if design_control == "inverter":
     S,Is,phi,P,Q,Vs,N_parallel = Calculation_functions_class.compute_power_flow_from_pf_design_control_inverter(overshoot_margin_inverter,
@@ -360,27 +362,22 @@ elif thermal_states == "shared":
 
         del m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, T_j_I, T_j_D, vs_inverter, is_inverter
 
-
-def cat(lst): return np.concatenate(lst)
-
 df_1 = pd.DataFrame({
-    "sec_idx":     cat(sec_idx_list),
-    "time_s":      cat(time_list),
-    "m":           cat(m_list),
-    "is_I":        cat(is_I_list),
-    "is_D":        cat(is_D_list),
-    "P_sw_I":      cat(P_sw_I_list),
-    "P_sw_D":      cat(P_sw_D_list),
-    "P_con_I":     cat(P_con_I_list),
-    "P_con_D":     cat(P_con_D_list),
-    "P_leg_all":       cat(P_leg_list),
-    "TjI_all":       cat(TjI_list),
-    "TjD_all":       cat(TjD_list),
-    "vs_inverter": cat(vs_list),
-    "is_inverter": cat(is_inv_list),
+    "sec_idx":     Calculation_functions_class.cat(sec_idx_list),
+    "time_s":      Calculation_functions_class.cat(time_list),
+    "m":           Calculation_functions_class.cat(m_list),
+    "is_I":        Calculation_functions_class.cat(is_I_list),
+    "is_D":        Calculation_functions_class.cat(is_D_list),
+    "P_sw_I":      Calculation_functions_class.cat(P_sw_I_list),
+    "P_sw_D":      Calculation_functions_class.cat(P_sw_D_list),
+    "P_con_I":     Calculation_functions_class.cat(P_con_I_list),
+    "P_con_D":     Calculation_functions_class.cat(P_con_D_list),
+    "P_leg_all":       Calculation_functions_class.cat(P_leg_list),
+    "TjI_all":       Calculation_functions_class.cat(TjI_list),
+    "TjD_all":       Calculation_functions_class.cat(TjD_list),
+    "vs_inverter": Calculation_functions_class.cat(vs_list),
+    "is_inverter": Calculation_functions_class.cat(is_inv_list),
 })
-
-
 
 TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = np.array(df_1["TjI_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
 TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = np.array(df_1["TjD_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
@@ -443,9 +440,9 @@ print("Execution time all code:", end_time - start_time, "seconds")
 'Monte carlo-based reliability assessment'
 '################################################################################################################################################################'
 
-#----------------------------------------#
+#--------------------------------------------------------------------------------#
 # Calculating delta T from mean T mean and heat cycle values
-#----------------------------------------#
+#--------------------------------------------------------------------------------#
 
 number_of_yearly_cycles ,Yearly_life_consumption_I, Tj_mean_float_I, delta_Tj_float_I,t_cycle_float = Calculation_functions_class.delta_t_calculations(A = A,                 # Input = float
                                                                                                                                                        alpha = alpha,         # Input = float
@@ -480,11 +477,9 @@ _, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_ = Calculation_
                                                                                                                      pf = pf,               # Input = float
                                                                                                                      Life = Life_D )        # Input = float
 
-
-#----------------------------------------#
+#--------------------------------------------------------------------------------#
 # Normal distribution of every variable to calculate the variability of N_f
-#----------------------------------------#
-
+#--------------------------------------------------------------------------------#
 
 A_normal_distribution                = Calculation_functions_class.variable_input_normal_distribution(variable = A, normal_distribution = 0.05, number_of_samples = 10000)
 alpha_normal_distribution            = Calculation_functions_class.variable_input_normal_distribution(variable = alpha, normal_distribution = 0.05, number_of_samples = 10000)
@@ -532,16 +527,13 @@ Nf_D_normal_distribution = Calculation_functions_class.Cycles_to_failure(A=A_nor
                                                                          t_cycle_heat=t_cycle_float_normal_distribution,
                                                                          ar=ar_normal_distribution )
 
-
 Life_period_I_normal_distribution = Calculation_functions_class.Lifecycle_normal_distribution_calculation_acceleration_factor(Nf=Nf_I_normal_distribution, f=f, Component_max_lifetime=IGBT_max_lifetime)
 Life_period_D_normal_distribution = Calculation_functions_class.Lifecycle_normal_distribution_calculation_acceleration_factor(Nf=Nf_D_normal_distribution, f=f, Component_max_lifetime=Diode_max_lifetime)
 Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distribution,Life_period_D_normal_distribution)
 
-
 '################################################################################################################################################################'
 'Plotting Values and saving dataframe'
 '################################################################################################################################################################'
-
 
 #----------------------------------------#
 # Saving dataframes
@@ -560,7 +552,8 @@ df_2 = pd.DataFrame({
     "t_cycle_heat_D":t_cycle_heat_D,
     "Life_I":Life_I,
     "Life_D":Life_D,
-    "Life_switch":Life_switch})
+    "Life_switch":Life_switch,
+    "dt":dt})
 
 
 df_3 = pd.DataFrame({

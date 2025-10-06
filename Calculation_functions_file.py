@@ -1312,3 +1312,49 @@ class Calculation_functions_class:
         latest_file = max(files, key=extract_chunk_no)
         # print(f"[INFO] Loading latest {prefix} file: {latest_file}")
         return pd.read_parquet(latest_file, engine="pyarrow")
+
+
+    @staticmethod
+    def resize_foster_branches(r, tau, N):
+        """
+        Resample Foster RC branches to fixed length N using log-time interpolation.
+        Preserves total Rθ and approximates the transient shape.
+        """
+        import numpy as np
+
+        r = np.asarray(r, dtype=np.float64).ravel()
+        tau = np.asarray(tau, dtype=np.float64).ravel()
+        assert r.size == tau.size and r.ndim == 1
+
+        m = r.size
+        if m == N:
+            return r.copy(), tau.copy()
+
+        if m == 1:
+            # Expand one lump to N via geometric spread around tau0; split Rθ equally.
+            r0, tau0 = r[0], tau[0]
+            scales = np.geomspace(0.2, 5.0, N)  # tweak spread if you want
+            tau_new = tau0 * scales
+            r_new = np.full(N, r0 / N, dtype=np.float64)
+            return r_new, tau_new
+
+        # m >= 2: interpolate cumulative Rθ over log(τ)
+        idx = np.argsort(tau)
+        r_s = r[idx]
+        tau_s = tau[idx]
+        logtau = np.log(tau_s)
+        Rcum = np.cumsum(r_s)
+
+        logtau_new = np.linspace(logtau[0], logtau[-1], N)
+        Rcum_new = np.interp(logtau_new, logtau, Rcum)
+
+        r_new = np.empty(N, dtype=np.float64)
+        r_new[0] = Rcum_new[0]
+        r_new[1:] = Rcum_new[1:] - Rcum_new[:-1]
+        r_new[r_new < 0.0] = 0.0  # guard tiny negatives
+        # renormalize exactly
+        s = r_new.sum()
+        if s > 0:
+            r_new *= (Rcum[-1] / s)
+        tau_new = np.exp(logtau_new)
+        return r_new, tau_new

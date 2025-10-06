@@ -1,6 +1,7 @@
 import numpy as np
 from numba import njit
 from Calculation_functions_file import Calculation_functions_class
+from functools import lru_cache
 
 Calculation_functions = Calculation_functions_class()
 
@@ -99,38 +100,36 @@ def thermal_rollout_shared_thermal_state(P_I,  # Input = ndarray
     ks = (1 - alpha_s) * r_sink
 
     for k in range(n):
-        # IGBT junction→case branches (driven by P_I[k])
+        pI = P_I[k]
+        pD = P_D[k]
+        pleg = P_leg[k]
+
+        sum_I = 0.0
+        sum_D = 0.0
+        sum_p = 0.0
+        sum_s = 0.0
+
+        # Single fused branch loop (N = 5)
         for i in range(alpha_I.size):
-            Tbr_I[i] = Tbr_I[i] * alpha_I[i] + kI[i] * P_I[k]
+            tI = Tbr_I[i] * alpha_I[i] + kI[i] * pI
+            Tbr_I[i] = tI
+            sum_I += tI
 
-        # Diode junction→case branches (driven by P_D[k])
-        for i in range(alpha_D.size):
-            Tbr_D[i] = Tbr_D[i] * alpha_D[i] + kD[i] * P_D[k]
+            tD = Tbr_D[i] * alpha_D[i] + kD[i] * pD
+            Tbr_D[i] = tD
+            sum_D += tD
 
-        # Paste (case→sink) branches (driven by total leg power)
-        for i in range(alpha_p.size):
-            Tbr_p[i] = Tbr_p[i] * alpha_p[i] + kp[i] * P_leg[k]
+            tp = Tbr_p[i] * alpha_p[i] + kp[i] * pleg
+            Tbr_p[i] = tp
+            sum_p += tp
 
-        # Heatsink (sink→ambient) branches (driven by total leg power)
-        for i in range(alpha_s.size):
-            Tbr_s[i] = Tbr_s[i] * alpha_s[i] + ks[i] * P_leg[k]
+            ts = Tbr_s[i] * alpha_s[i] + ks[i] * pleg
+            Tbr_s[i] = ts
+            sum_s += ts
 
-        # Sums for junction temperatures
-        shared_rise = np.float64(0.0)
-        for i in range(alpha_p.size):
-            shared_rise += Tbr_p[i]
-        for i in range(alpha_s.size):
-            shared_rise += Tbr_s[i]
-
-        sum_I = np.float64(0.0)
-        for i in range(alpha_I.size):
-            sum_I += Tbr_I[i]
-        sum_D = np.float64(0.0)
-        for i in range(alpha_D.size):
-            sum_D += Tbr_D[i]
-
-        T_j_I[k] = Tamb + shared_rise + sum_I
-        T_j_D[k] = Tamb + shared_rise + sum_D
+        shared = sum_p + sum_s
+        T_j_I[k] = Tamb + shared + sum_I
+        T_j_D[k] = Tamb + shared + sum_D
 
     return T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p, Tbr_s
 
@@ -239,59 +238,100 @@ def thermal_rollout_separated_thermal_state(P_I,  # ndarray
     ks = (1 - alpha_s) * r_sink
 
     for k in range(n):
-        # IGBT junction→case branches
-        for i in range(alpha_I.size):
-            Tbr_I[i] = Tbr_I[i] * alpha_I[i] + kI[i] * P_I[k]
+        pI = P_I[k]
+        pD = P_D[k]
 
-        # Diode junction→case branches
-        for i in range(alpha_D.size):
-            Tbr_D[i] = Tbr_D[i] * alpha_D[i] + kD[i] * P_D[k]
+        sum_I = 0.0
+        sum_D = 0.0
+        rise_p_I = 0.0
+        rise_s_I = 0.0
+        rise_p_D = 0.0
+        rise_s_D = 0.0
 
-        # IGBT paste (case→sink) driven by IGBT loss
-        for i in range(alpha_p.size):
-            Tbr_p_I[i] = Tbr_p_I[i] * alpha_p[i] + kp[i] * P_I[k]
+        # Single fused branch loop (N = 5)
+        for i in range(5):
+            # IGBT junction→case
+            tI = Tbr_I[i] * alpha_I[i] + kI[i] * pI
+            Tbr_I[i] = tI
+            sum_I += tI
 
-        # IGBT sink (sink→ambient) driven by IGBT loss
-        for i in range(alpha_s.size):
-            Tbr_s_I[i] = Tbr_s_I[i] * alpha_s[i] + ks[i] * P_I[k]
+            # Diode junction→case
+            tD = Tbr_D[i] * alpha_D[i] + kD[i] * pD
+            Tbr_D[i] = tD
+            sum_D += tD
 
-        # Diode paste (case→sink) driven by Diode loss
-        for i in range(alpha_p.size):
-            Tbr_p_D[i] = Tbr_p_D[i] * alpha_p[i] + kp[i] * P_D[k]
+            # IGBT paste/sink (driven by P_I)
+            tpI = Tbr_p_I[i] * alpha_p[i] + kp[i] * pI
+            Tbr_p_I[i] = tpI
+            rise_p_I += tpI
 
-        # Diode sink (sink→ambient) driven by Diode loss
-        for i in range(alpha_s.size):
-            Tbr_s_D[i] = Tbr_s_D[i] * alpha_s[i] + ks[i] * P_D[k]
+            tsI = Tbr_s_I[i] * alpha_s[i] + ks[i] * pI
+            Tbr_s_I[i] = tsI
+            rise_s_I += tsI
 
-        # Sums for junction temperatures (independent paths)
-        sum_I = np.float64(0.0)
-        for i in range(alpha_I.size):
-            sum_I += Tbr_I[i]
-        sum_D = np.float64(0.0)
-        for i in range(alpha_D.size):
-            sum_D += Tbr_D[i]
+            # Diode paste/sink (driven by P_D)
+            tpD = Tbr_p_D[i] * alpha_p[i] + kp[i] * pD
+            Tbr_p_D[i] = tpD
+            rise_p_D += tpD
 
-        rise_p_I = np.float64(0.0)
-        for i in range(alpha_p.size):
-            rise_p_I += Tbr_p_I[i]
-        rise_s_I = np.float64(0.0)
-        for i in range(alpha_s.size):
-            rise_s_I += Tbr_s_I[i]
-
-        rise_p_D = np.float64(0.0)
-        for i in range(alpha_p.size):
-            rise_p_D += Tbr_p_D[i]
-        rise_s_D = np.float64(0.0)
-        for i in range(alpha_s.size):
-            rise_s_D += Tbr_s_D[i]
+            tsD = Tbr_s_D[i] * alpha_s[i] + ks[i] * pD
+            Tbr_s_D[i] = tsD
+            rise_s_D += tsD
 
         T_j_I[k] = Tamb + rise_p_I + rise_s_I + sum_I
         T_j_D[k] = Tamb + rise_p_D + rise_s_D + sum_D
 
     return T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p_I, Tbr_s_I, Tbr_p_D, Tbr_s_D
 
+def _kernel_key_tuple(Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off, I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D, V_0_D, omega,dt):
+
+    # Quantize to avoid key explosion from float noise
+    r = lambda x: float(np.round(x, 12))
+
+    return (r(Vs), r(Is), r(phi), r(V_dc), r(pf), r(M), r(f_sw), r(t_on), r(t_off), r(I_ref), r(V_ref), r(Err_D), r(R_IGBT), r(V_0_IGBT), r(R_D), r(V_0_D), r(omega), r(dt))
+
+@lru_cache(maxsize=20000)
+def _build_kernel_one_second_cached(key):
+
+    (Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off,I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D, V_0_D, omega, dt) = key
+
+    """
+    Build 1-second time grid and all electrical/loss arrays.
+    Returns: (t, m, is_I, is_D,P_sw_I, P_sw_D, P_con_I, P_con_D,P_I, P_D, P_leg,vs_inverter, is_inverter)
+    """
+
+    t = np.arange(0.0, 1.0, dt, dtype=np.float64)
+
+    vs_inverter, is_inverter = Calculation_functions_class.Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi, t=t,omega=omega)
+    m = Calculation_functions_class.Instantaneous_modulation(M=M, omega=omega, t=t, phi=phi)
+    is_I, is_D = Calculation_functions_class.IGBT_and_diode_current(Is=Is, t=t, m=m, omega=omega)
+
+    P_sw_I, P_sw_D = Calculation_functions_class.Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off,f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref,Err_D=Err_D)
+    P_con_I, P_con_D = Calculation_functions_class.Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT, M=M,pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
+
+    P_I = np.ascontiguousarray(np.maximum(P_sw_I + P_con_I, 0.0), dtype=np.float64)
+    P_D = np.ascontiguousarray(np.maximum(P_sw_D + P_con_D, 0.0), dtype=np.float64)
+    P_leg = np.ascontiguousarray(P_I + P_D, dtype=np.float64)
+
+    # Optional: make cached arrays read-only to prevent accidental mutation
+    for arr in (t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_I, P_D, P_leg, vs_inverter, is_inverter):
+        arr.setflags(write=False)
+
+    return (t, m, is_I, is_D,P_sw_I, P_sw_D, P_con_I, P_con_D,P_I, P_D, P_leg,vs_inverter, is_inverter)
 
 class Electro_thermal_behavior_class:
+
+    @staticmethod
+    def _kernel_key(Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off,I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D, V_0_D, omega, dt):
+
+        return _kernel_key_tuple(Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off,I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D, V_0_D,omega, dt)
+
+    @staticmethod
+    def get_kernel(Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off, I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D, V_0_D,omega,dt):
+
+        key = Electro_thermal_behavior_class._kernel_key(Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off, I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D,V_0_D,omega, dt)
+
+        return _build_kernel_one_second_cached(key)
 
     @staticmethod
     def Electro_thermal_behavior_shared_thermal_state(dt,  # float
@@ -442,19 +482,12 @@ class Electro_thermal_behavior_class:
 
         """
 
-        # time vector for this 1-second window
-        t = np.arange(0.0, 1.0, dt,dtype=np.float64)  # Create an array of time instants [s] (1000 steps) from 0 to 1.0 second. This defines the simulation horizon for that particular pf, P and Q value.
-
-        vs_inverter, is_inverter = Calculation_functions.Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi,t=t, omega=omega)
-        m = Calculation_functions.Instantaneous_modulation(M=M, omega=omega, t=t, phi=phi)
-        is_I, is_D = Calculation_functions.IGBT_and_diode_current(Is=Is, t=t, m=m, omega=omega)
-        P_sw_I, P_sw_D = Calculation_functions.Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off,f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref,Err_D=Err_D)
-        P_con_I, P_con_D = Calculation_functions.Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT,M=M, pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
-
-        P_I = np.ascontiguousarray(np.maximum(P_sw_I + P_con_I, 0.0), dtype=np.float64)  # [W] Total instantaneous IGBT power loss [W] = switching + conduction
-        P_D = np.ascontiguousarray(np.maximum(P_sw_D + P_con_D, 0.0), dtype=np.float64)  # [W] Total instantaneous diode power loss [W] = switching + conduction
-        P_leg = np.ascontiguousarray(P_I + P_D, dtype=np.float64)  # [W] Total leg power loss [W] = combined IGBT + diode losses
-
+        (t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_I, P_D, P_leg, vs_inverter,
+         is_inverter) = Electro_thermal_behavior_class.get_kernel(Vs=Vs, Is=Is, phi=phi, V_dc=V_dc, pf=pf, M=M,
+                                                                  f_sw=f_sw, t_on=t_on, t_off=t_off, I_ref=I_ref,
+                                                                  V_ref=V_ref, Err_D=Err_D, R_IGBT=R_IGBT,
+                                                                  V_0_IGBT=V_0_IGBT, R_D=R_D, V_0_D=V_0_D, omega=omega,
+                                                                  dt=dt)
 
         T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p, Tbr_s = thermal_rollout_shared_thermal_state(P_I=P_I,
                                                                                         P_D=P_D,
@@ -472,7 +505,6 @@ class Electro_thermal_behavior_class:
                                                                                         Tbr_D=Tbr_D,
                                                                                         Tbr_p=Tbr_p,
                                                                                         Tbr_s=Tbr_s)
-
         return (t,
                 m,
                 is_I,
@@ -646,21 +678,11 @@ class Electro_thermal_behavior_class:
             Updated Foster branch states for diode heatsink (sink → ambient) [K].
         """
 
-        # time vector for this 1-second window
-        t = np.arange(0.0, 1.0, dt,dtype=np.float64)  # Create an array of time instants [s] (1000 steps) from 0 to 1.0 second. This defines the simulation horizon for that particular pf, P and Q value.
 
-        vs_inverter, is_inverter = Calculation_functions.Inverter_voltage_and_current(Vs=Vs, Is=Is, phi=phi,t=t, omega=omega)
-        m = Calculation_functions.Instantaneous_modulation(M=M, omega=omega, t=t, phi=phi)
-        is_I, is_D = Calculation_functions.IGBT_and_diode_current(Is=Is, t=t, m=m, omega=omega)
-        P_sw_I, P_sw_D = Calculation_functions.Switching_losses(V_dc=V_dc, is_I=is_I, t_on=t_on, t_off=t_off,f_sw=f_sw, is_D=is_D, I_ref=I_ref, V_ref=V_ref,Err_D=Err_D)
-        P_con_I, P_con_D = Calculation_functions.Conduction_losses(is_I=is_I, R_IGBT=R_IGBT, V_0_IGBT=V_0_IGBT,M=M, pf=pf, is_D=is_D, R_D=R_D, V_0_D=V_0_D)
+        (t, m, is_I, is_D,P_sw_I, P_sw_D, P_con_I, P_con_D,P_I, P_D, P_leg,vs_inverter, is_inverter) = Electro_thermal_behavior_class.get_kernel(Vs=Vs, Is=Is, phi=phi, V_dc=V_dc, pf=pf,M=M, f_sw=f_sw, t_on=t_on,
+                                                                                                                                                 t_off=t_off,I_ref=I_ref, V_ref=V_ref, Err_D=Err_D,R_IGBT=R_IGBT,
+                                                                                                                                                 V_0_IGBT=V_0_IGBT, R_D=R_D, V_0_D=V_0_D,omega=omega, dt=dt)
 
-        P_I = np.ascontiguousarray(np.maximum(P_sw_I + P_con_I, 0.0), dtype=np.float64) # [W] Total instantaneous IGBT power loss [W] = switching + conduction
-        P_D = np.ascontiguousarray(np.maximum(P_sw_D + P_con_D, 0.0), dtype=np.float64)  # [W] Total instantaneous diode power loss [W] = switching + conduction
-        P_leg = np.ascontiguousarray(P_I + P_D, dtype=np.float64)  # [W] Total leg power loss [W] = combined IGBT + diode losses
-
-
-        
 
         # Advance thermal RC states with separated paths
         T_j_I, T_j_D, Tbr_I, Tbr_D, Tbr_p_I, Tbr_s_I, Tbr_p_D, Tbr_s_D = thermal_rollout_separated_thermal_state(

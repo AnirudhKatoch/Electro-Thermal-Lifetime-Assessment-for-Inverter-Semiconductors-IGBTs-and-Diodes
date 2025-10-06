@@ -1,25 +1,27 @@
 import numpy as np
-import pandas as pd
+from Calculation_functions_file import Calculation_functions_class
+
+Calculation_functions_class = Calculation_functions_class()
 
 class Input_parameters_class:
 
     def __init__(self):
 
-        self.saving_dataframes = True # Set True if you want to save dataframes and False if you don't want to save dataframes.
-        self.plotting_values = True   # Set True if you want to plot values and False if you don't want to plot values.
+        self.saving_dataframes = False # Set True if you want to save dataframes and False if you don't want to save dataframes.
+        self.plotting_values = False   # Set True if you want to plot values and False if you don't want to plot values.
 
-        self.chunk_seconds = 43200
+        self.chunk_seconds = int(3600*12)
 
         self.design_control = "switch" # "inverter" or "switch" , choose between two on what is the designing process,
         # In "switch" you can directly give in power values for the switch
         # In "inverter" if your power requirements are above the rated power of the switch the system will automatically put switches in parallel to match the power requirements.
         self.overshoot_margin_inverter = 0
 
-        df = pd.read_parquet(f"Load_profiles/synPRO_el_family_1_sec_1_year.parquet", engine="pyarrow")
-        self.P = np.array(df["P_el"])
+        #df = pd.read_parquet(f"Load_profiles/synPRO_el_family_1_sec_1_year.parquet", engine="pyarrow")
+        #self.P = np.array(df["P_el"])
 
-        #self.P = np.full(int(3600*3),34500*0.3) #test with this
-        self.pf = np.full(len(self.P), 1, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
+        self.P = np.full(int(3600*24),34500*0.3) #test with this
+        self.pf = np.full(len(self.P), 0.3, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
         self.Q = np.full(len(self.pf), 0, dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
         self.Vs = np.full(len(self.pf), 230)     # [V] Inverter phase RMS AC side voltage
         #self.Vs = np.array([])                          # [V] Inverter RMS AC side voltage
@@ -27,7 +29,7 @@ class Input_parameters_class:
         self.f = 50                                      # [Hz] Grid frequency
         self.M = 1.034                                   # [-] Inverter modulation index # Modulation cannot be above 1 as model does not take into account. Here I have done it barely to make the system follow physics law.
         self.Tamb = 298.15                               # [K] Ambient Temperature
-        self.dt = 0.001                                  # [s] Simulation timestep (1 ms)
+        self.dt = 0.002                                  # [s] Simulation timestep (1 ms)
 
         if (self.pf[0] == 0 and self.Q[0] == 0):
             raise ValueError(
@@ -167,12 +169,19 @@ class Input_parameters_class:
 
         self.t_cycle_heat_my_value = 0.005    # Heat cycle input by user.
 
+        # --- Normalize all Foster arrays to fixed length N ---
+        N_FOSTER = 5
+
+        self.r_I, self.tau_I = Calculation_functions_class.resize_foster_branches(self.r_I, self.tau_I, N_FOSTER)
+        self.r_D, self.tau_D = Calculation_functions_class.resize_foster_branches(self.r_D, self.tau_D, N_FOSTER)
+        self.r_paste, self.tau_paste = Calculation_functions_class.resize_foster_branches(self.r_paste, self.tau_paste, N_FOSTER)
+        self.r_sink, self.tau_sink = Calculation_functions_class.resize_foster_branches(self.r_sink, self.tau_sink, N_FOSTER)
+
     # ----------------------------------------#
     # Thermal state & constants
     # ----------------------------------------#
 
     # Precompute alphas (discrete-time decay factors for RC branches)
-
     @property
     def alpha_I(self):
         return np.exp(-self.dt / self.tau_I)
