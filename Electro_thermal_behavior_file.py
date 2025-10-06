@@ -249,7 +249,7 @@ def thermal_rollout_separated_thermal_state(P_I,  # ndarray
         rise_s_D = 0.0
 
         # Single fused branch loop (N = 5)
-        for i in range(5):
+        for i in range(alpha_I.size):
             # IGBT junction→case
             tI = Tbr_I[i] * alpha_I[i] + kI[i] * pI
             Tbr_I[i] = tI
@@ -286,11 +286,11 @@ def thermal_rollout_separated_thermal_state(P_I,  # ndarray
 def _kernel_key_tuple(Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off, I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D, V_0_D, omega,dt):
 
     # Quantize to avoid key explosion from float noise
-    r = lambda x: float(np.round(x, 12))
+    r = lambda x: float(round(float(x), 10))
 
     return (r(Vs), r(Is), r(phi), r(V_dc), r(pf), r(M), r(f_sw), r(t_on), r(t_off), r(I_ref), r(V_ref), r(Err_D), r(R_IGBT), r(V_0_IGBT), r(R_D), r(V_0_D), r(omega), r(dt))
 
-@lru_cache(maxsize=20000)
+@lru_cache(maxsize=40000)
 def _build_kernel_one_second_cached(key):
 
     (Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off,I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D, V_0_D, omega, dt) = key

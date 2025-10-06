@@ -5,6 +5,7 @@ import gc, ctypes, sys
 import os, re, glob
 import pyarrow.parquet as pq
 import pandas as pd
+import pyarrow as pa
 
 class Calculation_functions_class:
 
@@ -144,7 +145,7 @@ class Calculation_functions_class:
 
         # Q[i] = ± sqrt(S[i]^2 - P[i]^2) for pf != 0
         # (Note: numerical noise can make the radicand slightly negative; clip at 0.)
-        rad = np.clip(S[mnz] ** 2 - P[mnz] ** 2)
+        rad = (S[mnz] ** 2 - P[mnz] ** 2)
         root = np.sqrt(rad)
         idx_mnz = np.where(mnz)[0]
         Q[idx_mnz[mneg[mnz]]] = -root[mneg[mnz]]
@@ -166,69 +167,55 @@ class Calculation_functions_class:
                                                            M,
                                                            V_dc):
 
-        @staticmethod
-        def compute_power_flow_from_pf_design_control_inverter(
-                overshoot_margin_inverter,
-                inverter_phases,
-                Vs,
-                max_IGBT_RMS_Current,
-                S,
-                P,
-                Q,
-                pf,
-                single_phase_inverter_topology,
-                modulation_scheme,
-                M,
-                V_dc
-        ):
-            """
-            Compute apparent power S, RMS current Is, and phase angle phi
-            with automatic parallel switch sizing (design-control version).
 
-            Parameters
-            ----------
-            overshoot_margin_inverter : float
-                Safety margin factor (e.g., 0.1 → 10%).
-            inverter_phases : {1,3}
-                Number of inverter phases.
-            Vs : array
-                RMS AC-side phase voltage per sec [V].
-            max_IGBT_RMS_Current : float
-                Maximum RMS current rating of one IGBT device [A].
-            S : array
-                Apparent power per sec [VA] (system level before scaling).
-            P : array
-                Active power per sec [W].
-            Q : array
-                Reactive power per sec [VAr].
-            pf : array
-                Power factor per sec [-].
-            single_phase_inverter_topology : {"half","full"}
-                Topology for single-phase inverter.
-            modulation_scheme : {"spwm","svm"}
-                Modulation strategy.
-            M : float
-                Modulation index [-].
-            V_dc : array
-                DC-side phase voltage per sec [V].
+        """
+        Compute apparent power S, RMS current Is, and phase angle phi
+        with automatic parallel switch sizing (design-control version).
 
-            Returns
-            -------
-            S : array
-                Apparent power per sample [VA] (per-device after scaling).
-            Is : array
-                RMS current per sample [A] (per-device).
-            phi : array
-                Phase angle between voltage and current per sample [rad].
-            P : array
-                Active power per sample [W] (per-device after pf==0 rule).
-            Q : array
-                Reactive power per sample [VAr] (per-device, updated for pf ≠ 0).
-            Vs : array
-                RMS AC-side phase voltage per sec [V].
-            N_parallel : int
-                Number of parallel switches required.
-            """
+        Parameters
+        ----------
+        overshoot_margin_inverter : float
+            Safety margin factor (e.g., 0.1 → 10%).
+        inverter_phases : {1,3}
+            Number of inverter phases.
+        Vs : array
+            RMS AC-side phase voltage per sec [V].
+        max_IGBT_RMS_Current : float
+            Maximum RMS current rating of one IGBT device [A].
+        S : array
+            Apparent power per sec [VA] (system level before scaling).
+        P : array
+            Active power per sec [W].
+        Q : array
+            Reactive power per sec [VAr].
+        pf : array
+            Power factor per sec [-].
+        single_phase_inverter_topology : {"half","full"}
+            Topology for single-phase inverter.
+        modulation_scheme : {"spwm","svm"}
+            Modulation strategy.
+        M : float
+            Modulation index [-].
+        V_dc : array
+            DC-side phase voltage per sec [V].
+
+        Returns
+        -------
+        S : array
+            Apparent power per sample [VA] (per-device after scaling).
+        Is : array
+            RMS current per sample [A] (per-device).
+        phi : array
+            Phase angle between voltage and current per sample [rad].
+        P : array
+            Active power per sample [W] (per-device after pf==0 rule).
+        Q : array
+            Reactive power per sample [VAr] (per-device, updated for pf ≠ 0).
+        Vs : array
+            RMS AC-side phase voltage per sec [V].
+        N_parallel : int
+            Number of parallel switches required.
+        """
 
         margin = 1.0 + float(overshoot_margin_inverter)
         S_max_eff = inverter_phases * Vs * float(max_IGBT_RMS_Current) / margin
@@ -307,7 +294,7 @@ class Calculation_functions_class:
 
         # Q[i] = ± sqrt(S[i]^2 - P[i]^2) for pf != 0
         # (Note: numerical noise can make the radicand slightly negative; clip at 0.)
-        rad = np.clip(S[mnz] ** 2 - P[mnz] ** 2)
+        rad = (S[mnz] ** 2 - P[mnz] ** 2)
         root = np.sqrt(rad)
         idx_mnz = np.where(mnz)[0]
         Q[idx_mnz[mneg[mnz]]] = -root[mneg[mnz]]
@@ -1358,3 +1345,107 @@ class Calculation_functions_class:
             r_new *= (Rcum[-1] / s)
         tau_new = np.exp(logtau_new)
         return r_new, tau_new
+
+    @staticmethod
+    def write_dataframe_fast(df, path, codec="zstd", level=7, row_group_size=1_000_000, data_page_size=1 << 16):
+        table = pa.Table.from_pandas(df, preserve_index=False)
+        pq.write_table(
+            table,
+            path,
+            compression=codec,  # "zstd" (smaller) or "snappy" (faster)
+            compression_level=level,  # keep 7 for zstd; snappy ignores level
+            use_dictionary=True,
+            write_statistics=True,
+            data_page_size=data_page_size,  # ~64KB pages
+            row_group_size=row_group_size  # e.g. ~1M rows per row group
+        )
+
+    @staticmethod
+    def prepare_df2_and_time_axis(
+        df_2: pd.DataFrame,
+        sample_rate_hz: float = 1,   # <-- 50 rows per second
+        max_points: int = 86400,        # cap to 86,400 bins (e.g., one per second over a day)
+        do_downsample: bool = True
+    ):
+        """
+        Returns: df_2_reduced, time_axis, time_label
+        - time_axis is in chosen display units (sec/hour/day), starting at 0.
+        - Uses sample_rate_hz to convert rows -> seconds if df_2 doesn't already store real seconds.
+        - Downsamples to max_points bins by averaging numeric columns in uniform time bins
+          over the TRUE duration (based on sample_rate_hz).
+        """
+
+        if not len(df_2):
+            return df_2.copy(), np.array([], dtype=float), "Time (s)"
+
+        # --- 1) Compute TRUE duration in seconds from sample rate ---
+        # If your df_2["time_period_df2"] already stores seconds, set sample_rate_hz=None.
+        if sample_rate_hz is not None and sample_rate_hz > 0:
+            total_seconds = (len(df_2) - 1) / sample_rate_hz
+            # Build a seconds-based time array for downsampling
+            t_seconds = np.linspace(0.0, total_seconds, num=len(df_2), dtype=np.float64)
+        else:
+            # Trust the provided time column as seconds
+            if "time_period_df2" not in df_2.columns:
+                raise KeyError("'time_period_df2' not found and sample_rate_hz is None.")
+            t_seconds = df_2["time_period_df2"].to_numpy(dtype=np.float64)
+            total_seconds = float(t_seconds[-1] - t_seconds[0]) if len(t_seconds) > 1 else 0.0
+
+        # --- 2) Optional downsampling to <= max_points ---
+        if do_downsample and len(df_2) > max_points:
+            edges = np.linspace(0.0, total_seconds, num=max_points + 1, dtype=np.float64)
+            bin_idx = np.digitize(t_seconds, edges, right=False) - 1
+            bin_idx = np.clip(bin_idx, 0, max_points - 1)
+
+            num_cols = df_2.select_dtypes(include=[np.number]).columns.tolist()
+            # Do not average a pre-existing time column; we’ll rebuild it from bin centers
+            if "time_period_df2" in num_cols:
+                num_cols.remove("time_period_df2")
+
+            grouped = df_2.groupby(bin_idx, sort=True, observed=True)[num_cols].mean()
+            grouped = grouped.reindex(range(max_points), fill_value=np.nan).reset_index(drop=True)
+
+            # Rebuild time as bin centers (in seconds)
+            bin_centers = 0.5 * (edges[:-1] + edges[1:])
+            grouped.insert(0, "time_period_df2", bin_centers)  # keep a seconds column for reference
+            df_2 = grouped
+            t_seconds = bin_centers  # the new (downsampled) time base
+
+        # --- 3) Choose display units by duration; build axis starting at 0 ---
+        duration = float(t_seconds[-1] - t_seconds[0]) if len(t_seconds) > 1 else 0.0
+        if duration >= 2 * 86400.0:
+            scale = 86400.0
+            time_label = "Time (days)"
+        elif duration >= 3600.0:
+            scale = 3600.0
+            time_label = "Time (hours)"
+        else:
+            scale = 1.0
+            time_label = "Time (s)"
+
+        time_axis = (t_seconds - t_seconds[0]) / scale
+        return df_2, time_axis, time_label
+
+    @staticmethod
+    def infer_sample_rate(time_col):
+        """Infer sample rate (Hz) from df_2['time_period_df2']."""
+        # Convert to numeric seconds
+        t = pd.to_datetime(time_col) if np.issubdtype(time_col.dtype, np.datetime64) else time_col
+        t = (t - t.iloc[0]).astype("timedelta64[s]") if np.issubdtype(t.dtype, np.datetime64) else np.asarray(t)
+
+        # Convert to float seconds if timedelta
+        if not np.issubdtype(t.dtype, np.floating):
+            t = t.astype(float)
+
+        # Round to nearest microsecond to avoid floating noise
+        t_rounded = np.round(t - t[0], 6)
+
+        # Find how many samples fall in first full second
+        mask_first_sec = (t_rounded >= 0) & (t_rounded < 1.0)
+        sample_rate_hz = int(mask_first_sec.sum())
+
+        # Fallback: if nothing detected, assume 1 sample/sec
+        if sample_rate_hz == 0:
+            sample_rate_hz = 1
+
+        return sample_rate_hz

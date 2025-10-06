@@ -333,8 +333,6 @@ elif thermal_states == "shared":
                                                                                          Tbr_p=Tbr_p,       # Input = Array
                                                                                          Tbr_s=Tbr_s)       # Input = Array
 
-
-
         Calculation_functions_class.check_igbt_diode_limits(
             is_I=is_I, is_D=is_D, T_j_I=T_j_I, T_j_D=T_j_D,
             max_IGBT_RMS_Current=max_IGBT_RMS_Current,
@@ -390,6 +388,9 @@ TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_cla
 # IGBT
 #----------------------------------------#
 
+from Electro_thermal_behavior_file import _build_kernel_one_second_cached
+print(_build_kernel_one_second_cached.cache_info())
+
 Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
                                                      alpha=alpha,
                                                      beta1=beta1,
@@ -402,8 +403,7 @@ Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
                                                      Tj_mean=TjI_mean,
                                                      delta_Tj=TjI_delta,
                                                      t_cycle_heat=t_cycle_heat_I,
-                                                     ar=ar )
-
+                                                     ar=ar)
 
 Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_I,pf = pf,Component_max_lifetime = IGBT_max_lifetime)
 
@@ -412,21 +412,20 @@ Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(N
 #----------------------------------------#
 
 Nf_D = Calculation_functions_class.Cycles_to_failure(A=A,
-                      alpha=alpha,
-                      beta1=beta1,
-                      beta0=beta0,
-                      C=C,
-                      gamma=gamma,
-                      fd=fd,
-                      Ea=Ea,
-                      k_b=k_b,
-                      Tj_mean=TjD_mean,
-                      delta_Tj=TjD_delta,
-                      t_cycle_heat=t_cycle_heat_D,
-                      ar=ar )
+                                                     alpha=alpha,
+                                                     beta1=beta1,
+                                                     beta0=beta0,
+                                                     C=C,
+                                                     gamma=gamma,
+                                                     fd=fd,
+                                                     Ea=Ea,
+                                                     k_b=k_b,
+                                                     Tj_mean=TjD_mean,
+                                                     delta_Tj=TjD_delta,
+                                                     t_cycle_heat=t_cycle_heat_D,
+                                                     ar=ar )
 
 Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_D,pf = pf,Component_max_lifetime = Diode_max_lifetime)
-
 
 print('Life_I',Life_I)
 print('Life_D',Life_D)
@@ -548,8 +547,8 @@ df_2 = pd.DataFrame({
     "TjD_delta": TjD_delta,
     "Nf_I": Nf_I,
     "Nf_D": Nf_D,
-    "t_cycle_heat_I":t_cycle_heat_I,
-    "t_cycle_heat_D":t_cycle_heat_D,
+    #"t_cycle_heat_I":t_cycle_heat_I,
+    #"t_cycle_heat_D":t_cycle_heat_D,
     "Life_I":Life_I,
     "Life_D":Life_D,
     "Life_switch":Life_switch,

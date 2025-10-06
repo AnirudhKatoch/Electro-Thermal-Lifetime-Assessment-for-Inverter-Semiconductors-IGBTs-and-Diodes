@@ -1,5 +1,6 @@
 import numpy as np
 from Calculation_functions_file import Calculation_functions_class
+import pandas as pd
 
 Calculation_functions_class = Calculation_functions_class()
 
@@ -7,21 +8,23 @@ class Input_parameters_class:
 
     def __init__(self):
 
-        self.saving_dataframes = False # Set True if you want to save dataframes and False if you don't want to save dataframes.
-        self.plotting_values = False   # Set True if you want to plot values and False if you don't want to plot values.
+        self.saving_dataframes = True # Set True if you want to save dataframes and False if you don't want to save dataframes.
+        self.plotting_values = True   # Set True if you want to plot values and False if you don't want to plot values.
 
-        self.chunk_seconds = int(3600*12)
+        self.chunk_seconds = int(86400)
 
         self.design_control = "switch" # "inverter" or "switch" , choose between two on what is the designing process,
         # In "switch" you can directly give in power values for the switch
         # In "inverter" if your power requirements are above the rated power of the switch the system will automatically put switches in parallel to match the power requirements.
         self.overshoot_margin_inverter = 0
 
-        #df = pd.read_parquet(f"Load_profiles/synPRO_el_family_1_sec_1_year.parquet", engine="pyarrow")
-        #self.P = np.array(df["P_el"])
+        df = pd.read_parquet(f"Load_profiles/synPRO_el_family_1_sec_1_year.parquet", engine="pyarrow")
+        self.P = np.array(df["P_el"])
 
-        self.P = np.full(int(3600*24),34500*0.3) #test with this
-        self.pf = np.full(len(self.P), 0.3, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
+        del df
+
+        #self.P = np.full(int(3600*24*4),34500*0.3) #test with this
+        self.pf = np.full(len(self.P), 1, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
         self.Q = np.full(len(self.pf), 0, dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
         self.Vs = np.full(len(self.pf), 230)     # [V] Inverter phase RMS AC side voltage
         #self.Vs = np.array([])                          # [V] Inverter RMS AC side voltage
@@ -59,7 +62,6 @@ class Input_parameters_class:
         self.single_phase_inverter_topology = "full"  # options: "half" or "full"  # One can choose is the single phase inverter half bridge or full bridge
         if self.single_phase_inverter_topology not in ("half", "full"): # when inverter_phases == 3 this variable is invalid.
             raise ValueError("single_phase_inverter_topology must be 'half' or 'full'")
-
 
         self.Location_dataframes = "dataframe_files"
 
@@ -161,7 +163,7 @@ class Input_parameters_class:
         self.fI = 1                            # [-]  IGBT
         self.Ea = 0.06606 * 1.60218e-19        # [J] 32.5 °C ≤ T_junc ≤ 122 °C  # This condition will be met most of the time but sometimes it will deviate. the author will ignore this condition.
         self.k_b = 8.6173324e-5 * 1.60218e-19  # [J/K]
-        self.ar = 0.31                       # [-] Assuming to be of value of 0.31 but it will be different for every IGBT and diode
+        self.ar = 0.31                         # [-] Assuming to be of value of 0.31 but it will be different for every IGBT and diode
 
         # ----------------------------------------#
         # Miscellaneous

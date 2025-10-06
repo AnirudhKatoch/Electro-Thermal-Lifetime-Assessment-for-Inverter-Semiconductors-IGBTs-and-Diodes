@@ -249,6 +249,9 @@ print("Total chunks :",int(num_secs/chunk_seconds))
 for chunk_start in range(0, num_secs, chunk_seconds):
     chunk_end = min(chunk_start + chunk_seconds, num_secs)
     chunk_no = (chunk_start // chunk_seconds) + 1  # 1-based chunk index
+    is_last_chunk = (chunk_end == num_secs)
+
+    start_time_chunk = time.time()
 
     print("Chunk Number : ",chunk_no)
 
@@ -259,20 +262,22 @@ for chunk_start in range(0, num_secs, chunk_seconds):
     Vdc_chunk = V_dc[chunk_start:chunk_end]
     pf_chunk = pf[chunk_start:chunk_end]
 
-    sec_idx_list = []
-    time_list = []
-    m_list = []
-    is_I_list = []
-    is_D_list = []
-    P_sw_I_list = []
-    P_sw_D_list = []
-    P_con_I_list = []
-    P_con_D_list = []
-    P_leg_list = []
     TjI_list = []
     TjD_list = []
-    vs_list = []
-    is_inv_list = []
+
+    if is_last_chunk:
+        sec_idx_list = []
+        time_list = []
+        m_list = []
+        is_I_list = []
+        is_D_list = []
+        P_sw_I_list = []
+        P_sw_D_list = []
+        P_con_I_list = []
+        P_con_D_list = []
+        P_leg_list = []
+        vs_list = []
+        is_inv_list = []
 
     if thermal_states == "separated":
 
@@ -321,21 +326,25 @@ for chunk_start in range(0, num_secs, chunk_seconds):
                 max_IGBT_temperature=max_IGBT_temperature,
                 max_Diode_temperature=max_Diode_temperature)
 
-            sec_idx_list.append(np.full(t.size, sec_idx + 1, dtype=np.int32))
-            time_list.append(t + sec_idx)
-
-            m_list.append(m)
-            is_I_list.append(is_I)
-            is_D_list.append(is_D)
-            P_sw_I_list.append(P_sw_I)
-            P_sw_D_list.append(P_sw_D)
-            P_con_I_list.append(P_con_I)
-            P_con_D_list.append(P_con_D)
-            P_leg_list.append(P_leg)
             TjI_list.append(T_j_I)
             TjD_list.append(T_j_D)
-            vs_list.append(vs_inverter)
-            is_inv_list.append(is_inverter)
+
+            if is_last_chunk:
+                sec_idx_list.append(np.full(t.size, sec_idx + 1, dtype=np.int32))
+                time_list.append(t + sec_idx)
+                m_list.append(m)
+                is_I_list.append(is_I)
+                is_D_list.append(is_D)
+                P_sw_I_list.append(P_sw_I)
+                P_sw_D_list.append(P_sw_D)
+                P_con_I_list.append(P_con_I)
+                P_con_D_list.append(P_con_D)
+                P_leg_list.append(P_leg)
+                vs_list.append(vs_inverter)
+                is_inv_list.append(is_inverter)
+
+            del t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, vs_inverter, is_inverter
+            del T_j_I, T_j_D
 
     elif thermal_states == "shared":
 
@@ -383,52 +392,63 @@ for chunk_start in range(0, num_secs, chunk_seconds):
                 max_IGBT_temperature=max_IGBT_temperature,
                 max_Diode_temperature=max_Diode_temperature)
 
-            sec_idx_list.append(np.full(t.size, sec_idx + 1, dtype=np.int32))
-            time_list.append(t + sec_idx)
-
-            m_list.append(m)
-            is_I_list.append(is_I)
-            is_D_list.append(is_D)
-            P_sw_I_list.append(P_sw_I)
-            P_sw_D_list.append(P_sw_D)
-            P_con_I_list.append(P_con_I)
-            P_con_D_list.append(P_con_D)
-            P_leg_list.append(P_leg)
             TjI_list.append(T_j_I)
             TjD_list.append(T_j_D)
-            vs_list.append(vs_inverter)
-            is_inv_list.append(is_inverter)
 
-    df_1 = pd.DataFrame({
-        "sec_idx":     Calculation_functions_class.cat(sec_idx_list),
-        "time_s":      Calculation_functions_class.cat(time_list),
-        "m":           Calculation_functions_class.cat(m_list),
-        "is_I":        Calculation_functions_class.cat(is_I_list),
-        "is_D":        Calculation_functions_class.cat(is_D_list),
-        "P_sw_I":      Calculation_functions_class.cat(P_sw_I_list),
-        "P_sw_D":      Calculation_functions_class.cat(P_sw_D_list),
-        "P_con_I":     Calculation_functions_class.cat(P_con_I_list),
-        "P_con_D":     Calculation_functions_class.cat(P_con_D_list),
-        "P_leg_all":       Calculation_functions_class.cat(P_leg_list),
-        "TjI_all":       Calculation_functions_class.cat(TjI_list),
-        "TjD_all":       Calculation_functions_class.cat(TjD_list),
-        "vs_inverter": Calculation_functions_class.cat(vs_list),
-        "is_inverter": Calculation_functions_class.cat(is_inv_list),
-    })
+            if is_last_chunk:
+                sec_idx_list.append(np.full(t.size, sec_idx + 1, dtype=np.int32))
+                time_list.append(t + sec_idx)
+                m_list.append(m)
+                is_I_list.append(is_I)
+                is_D_list.append(is_D)
+                P_sw_I_list.append(P_sw_I)
+                P_sw_D_list.append(P_sw_D)
+                P_con_I_list.append(P_con_I)
+                P_con_D_list.append(P_con_D)
+                P_leg_list.append(P_leg)
+                vs_list.append(vs_inverter)
+                is_inv_list.append(is_inverter)
 
-    TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = np.array(df_1["TjI_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf_chunk)
-    TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = np.array(df_1["TjD_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf_chunk)
+            del t, m, is_I, is_D, P_sw_I, P_sw_D, P_con_I, P_con_D, P_leg, vs_inverter, is_inverter
+            del T_j_I, T_j_D
 
-    df_1.to_parquet(f"{df1_dir}/df_1_{chunk_no}.parquet", engine="pyarrow", compression="zstd")
+    TjI_all = Calculation_functions_class.cat(TjI_list)
+    TjD_all = Calculation_functions_class.cat(TjD_list)
 
-    del sec_idx_list, time_list, m_list, is_I_list, is_D_list
-    del P_sw_I_list, P_sw_D_list, P_con_I_list, P_con_D_list, P_leg_list
-    del TjI_list, TjD_list, vs_list, is_inv_list
-    del df_1
+    TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = TjI_all, time_window = 0.02,steps_per_sec=int(1/dt), pf = pf_chunk)
+    TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = TjD_all, time_window = 0.02,steps_per_sec=int(1/dt), pf = pf_chunk)
+
+    if is_last_chunk:
+        df_1 = pd.DataFrame({
+            "sec_idx":     Calculation_functions_class.cat(sec_idx_list),
+            "time_s":      Calculation_functions_class.cat(time_list),
+            "m":           Calculation_functions_class.cat(m_list),
+            "is_I":        Calculation_functions_class.cat(is_I_list),
+            "is_D":        Calculation_functions_class.cat(is_D_list),
+            "P_sw_I":      Calculation_functions_class.cat(P_sw_I_list),
+            "P_sw_D":      Calculation_functions_class.cat(P_sw_D_list),
+            "P_con_I":     Calculation_functions_class.cat(P_con_I_list),
+            "P_con_D":     Calculation_functions_class.cat(P_con_D_list),
+            "P_leg_all":       Calculation_functions_class.cat(P_leg_list),
+            "vs_inverter": Calculation_functions_class.cat(vs_list),
+            "is_inverter": Calculation_functions_class.cat(is_inv_list),
+            "TjI_all":Calculation_functions_class.cat(TjI_list),
+            "TjD_all":Calculation_functions_class.cat(TjD_list)})
+
+        df_1.to_parquet(f"{df1_dir}/df_1_{chunk_no}.parquet", engine="pyarrow", compression="zstd")
+
+        del sec_idx_list, time_list, m_list, is_I_list, is_D_list
+        del P_sw_I_list, P_sw_D_list, P_con_I_list, P_con_D_list, P_leg_list
+        del TjI_list, TjD_list, vs_list, is_inv_list
+        del df_1
+
+    del TjI_all, TjD_all
+    del Vs_chunk, Is_chunk, phi_chunk, Vdc_chunk, pf_chunk
+
     Calculation_functions_class.free_ram_now()
 
-    time_offset = (chunk_no - 1) * chunk_seconds
-    time_period_df2 = np.asarray(time_period_df2) + time_offset
+    from Electro_thermal_behavior_file import _build_kernel_one_second_cached
+    print(_build_kernel_one_second_cached.cache_info())
 
     Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
                                                          alpha=alpha,
@@ -445,18 +465,28 @@ for chunk_start in range(0, num_secs, chunk_seconds):
                                                          ar=ar )
 
     Nf_D = Calculation_functions_class.Cycles_to_failure(A=A,
-                          alpha=alpha,
-                          beta1=beta1,
-                          beta0=beta0,
-                          C=C,
-                          gamma=gamma,
-                          fd=fd,
-                          Ea=Ea,
-                          k_b=k_b,
-                          Tj_mean=TjD_mean,
-                          delta_Tj=TjD_delta,
-                          t_cycle_heat=t_cycle_heat_D,
-                          ar=ar )
+                                                         alpha=alpha,
+                                                         beta1=beta1,
+                                                         beta0=beta0,
+                                                         C=C,
+                                                         gamma=gamma,
+                                                         fd=fd,
+                                                         Ea=Ea,
+                                                         k_b=k_b,
+                                                         Tj_mean=TjD_mean,
+                                                         delta_Tj=TjD_delta,
+                                                         t_cycle_heat=t_cycle_heat_D,
+                                                         ar=ar )
+
+    chunk_seconds = chunk_end - chunk_start
+    time_period_df2 = np.arange(chunk_start, chunk_end, dtype=np.int64)
+
+    TjI_mean = TjI_mean.reshape(-1, f).mean(axis=1)
+    TjD_mean = TjD_mean.reshape(-1, f).mean(axis=1)
+    TjI_delta = TjI_delta.reshape(-1, f).mean(axis=1)
+    TjD_delta = TjD_delta.reshape(-1, f).mean(axis=1)
+    Nf_I = Nf_I.reshape(-1, f).mean(axis=1)
+    Nf_D = Nf_D.reshape(-1, f).mean(axis=1)
 
     df_2 = pd.DataFrame({
         "time_period_df2":time_period_df2,
@@ -465,42 +495,56 @@ for chunk_start in range(0, num_secs, chunk_seconds):
         "TjI_delta": TjI_delta,
         "TjD_delta": TjD_delta,
         "Nf_I": Nf_I,
-        "Nf_D": Nf_D,
-        "t_cycle_heat_I":t_cycle_heat_I,
-        "t_cycle_heat_D":t_cycle_heat_D})
+        "Nf_D": Nf_D
+        #"t_cycle_heat_I":t_cycle_heat_I,
+        #"t_cycle_heat_D":t_cycle_heat_D,
+        })
 
-    df_2.to_parquet(f"{df2_dir}/df_2_{chunk_no}.parquet", engine="pyarrow", compression="zstd")
+    for col in ["time_period_df2","TjI_mean", "TjD_mean", "TjI_delta", "TjD_delta", "Nf_I", "Nf_D"]:
+        df_2[col] = df_2[col].astype("float32")
 
-    del time_period_df2, TjI_mean, TjD_mean, TjI_delta,TjD_delta,Nf_I,Nf_D,t_cycle_heat_I,t_cycle_heat_D
+    #df_2["time_period_df2"] = df_2["time_period_df2"].astype("int32 ")  # or int32 if it’s always integer seconds
+
+    df_2.to_parquet(
+        os.path.join(df2_dir, f"df_2_{chunk_no:04d}.parquet"),
+        engine="pyarrow",
+        compression="zstd",
+        compression_level=7,
+        use_dictionary=True)
+
+    del time_period_df2 , TjI_mean, TjD_mean, TjI_delta , TjD_delta , Nf_I , Nf_D , t_cycle_heat_I , t_cycle_heat_D
     del df_2
+
     Calculation_functions_class.free_ram_now()
 
+    end_time_chunk = time.time()
+    print("Execution time this chunk:", end_time_chunk - start_time_chunk, "seconds")
 
-# -------- merge df_2_* -> df_2.parquet --------
-df2_files = Calculation_functions_class.find_sorted_files(df2_dir, "df_2")  # look only in df_2 subfolder
+df2_files = Calculation_functions_class.find_sorted_files(df2_dir, "df_2")
 Calculation_functions_class.merge_parquet_files(df2_files, os.path.join(Location_dataframes, "df_2.parquet"))
 
-# load merged dfs
 df_2 = pd.read_parquet(os.path.join(Location_dataframes, "df_2.parquet"), engine="pyarrow")
 
 Nf_I = df_2["Nf_I"]
 Nf_D = df_2["Nf_D"]
 TjI_mean = df_2["TjI_mean"]
-TjD_mean = df_2["TjI_mean"]
+TjD_mean = df_2["TjD_mean"]
 
-Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_I,pf = pf,Component_max_lifetime = IGBT_max_lifetime)
-Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_D,pf = pf,Component_max_lifetime = Diode_max_lifetime)
+Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_I, pf = pf, Component_max_lifetime = IGBT_max_lifetime)
+Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_D, pf = pf, Component_max_lifetime = Diode_max_lifetime)
 Life_switch = min(Life_I, Life_D)
 
-df_2["Life_I"]= Life_I
-df_2["Life_D"] = Life_D
-df_2["Life_switch"]= Life_switch
+for c in ["Life_I", "Life_D", "Life_switch", "dt"]:
+    df_2[c] = pd.Series(pd.NA, index=df_2.index, dtype="Float32")
+
+first = df_2.index[0]
+df_2.at[first, "Life_I"]     = np.float32(Life_I)
+df_2.at[first, "Life_D"]     = np.float32(Life_D)
+df_2.at[first, "Life_switch"]= np.float32(Life_switch)
+df_2.at[first, "dt"]         = np.float32(dt)
 
 print('Life_I',Life_I)
 print('Life_D',Life_D)
-
-end_time = time.time()
-print("Execution time all code:", end_time - start_time, "seconds")
 
 '################################################################################################################################################################'
 'Monte carlo-based reliability assessment'
@@ -510,7 +554,7 @@ print("Execution time all code:", end_time - start_time, "seconds")
 # Calculating delta T from mean T mean and heat cycle values
 #----------------------------------------#
 
-print(len(TjI_mean))
+
 
 number_of_yearly_cycles ,Yearly_life_consumption_I, Tj_mean_float_I, delta_Tj_float_I,t_cycle_float = Calculation_functions_class.delta_t_calculations(A = A,                 # Input = float
                                                                                                                                                        alpha = alpha,         # Input = float
@@ -611,6 +655,7 @@ Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distrib
 # usage
 df_1 = Calculation_functions_class.load_latest_df("df_1", Location_dataframes)
 
+
 df_3 = pd.DataFrame({
     "S":S,
     "P": P,
@@ -649,6 +694,9 @@ df_4 = pd.DataFrame({
 
 if saving_dataframes == True:
     save_dataframes(df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_dataframes="dataframe_files",timestamp=timestamp)
+
+end_time = time.time()
+print("Execution time all code:", end_time - start_time, "seconds")
 
 if plotting_values == True:
     Plotting_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures",timestamp=timestamp)

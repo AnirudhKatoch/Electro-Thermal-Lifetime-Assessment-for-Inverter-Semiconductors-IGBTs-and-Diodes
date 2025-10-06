@@ -22,24 +22,18 @@ class Plotting_class:
         # Prepare time axis for df_2
         # -------------------------------------------------
 
-        time_col_df2 =  df_2["time_period_df2"].copy()
-        if len(df_2) > 3600 * 50 * 24 * 2 :
-            time_col_df2 = time_col_df2 / 86400.0  # convert sec → days
-            time_label_df2 = "Time (days)"
-        elif len(df_2) > 3600 * 50:
-            time_col_df2 = time_col_df2 / 3600.0  # convert sec → hours
-            time_label_df2 = "Time (hours)"
-        else:
-            time_label_df2 = "Time (s)"
+        sample_rate_hz = Calculation_functions_class.infer_sample_rate(df_2["time_period_df2"])
+
+        df_2_new, time_col_df2, time_label_df2 = Calculation_functions_class.prepare_df2_and_time_axis(df_2, max_points=86400,sample_rate_hz=sample_rate_hz)
+
 
         # -------------------------------------------------
         # Figure 1: IGBT and Diode mean temperature
         # -------------------------------------------------
 
-
         fig1, ax1 = plt.subplots(figsize=(6.4, 4.8))
-        ax1.plot(time_col_df2, df_2["TjI_mean"] - 273.15, label="IGBT")
-        ax1.plot(time_col_df2, df_2["TjD_mean"] - 273.15, label="Diode")
+        ax1.plot(time_col_df2, df_2_new["TjI_mean"] - 273.15, label="IGBT")
+        ax1.plot(time_col_df2, df_2_new["TjD_mean"] - 273.15, label="Diode")
         ax1.set_xlabel(time_label_df2)
         ax1.set_ylabel("Temperature (°C)")
         ax1.set_title(" IGBT and diode mean temperature")
@@ -55,8 +49,8 @@ class Plotting_class:
         # -------------------------------------------------
 
         fig2, ax2 = plt.subplots(figsize=(6.4, 4.8))
-        ax2.plot(time_col_df2, df_2["TjI_delta"], label="IGBT")
-        ax2.plot(time_col_df2, df_2["TjD_delta"], label="Diode")
+        ax2.plot(time_col_df2, df_2_new["TjI_delta"], label="IGBT")
+        ax2.plot(time_col_df2, df_2_new["TjD_delta"], label="Diode")
         ax2.set_xlabel(time_label_df2)
         ax2.set_ylabel("Temperature (°C)")
         ax2.set_title(" IGBT and diode temperature variation")
@@ -72,13 +66,12 @@ class Plotting_class:
         # -------------------------------------------------
 
         fig3, ax3 = plt.subplots(figsize=(6.4, 4.8))
-        ax3.plot(time_col_df2, df_2["Nf_I"], label="IGBT")
-        ax3.plot(time_col_df2, df_2["Nf_D"], label="Diode")
+        ax3.plot(time_col_df2, df_2_new["Nf_I"], label="IGBT")
+        ax3.plot(time_col_df2, df_2_new["Nf_D"], label="Diode")
         ax3.set_xlabel(time_label_df2)
         ax3.set_ylabel("Cycles to Failure")
         ax3.set_title("IGBT and Diode cycles to failure")
         ax3.set_xlim(min(time_col_df2), max(time_col_df2))
-        ax3.legend()
         ax3.legend(loc="best")
         ax3.grid(True)
         ax3.set_yscale("log")
@@ -86,19 +79,54 @@ class Plotting_class:
         plt.close(fig3)
 
         # -------------------------------------------------
+        # Figure 18: IGBT and Diode Life (Dual Y-Axis, Log Scale)
+        # -------------------------------------------------
+
+        fig18, ax18 = plt.subplots(figsize=(6.4, 4.8))
+
+        # Left axis (IGBT)
+        ax18.bar("IGBT", df_2_new["Life_I"].iloc[0])
+        ax18.set_ylabel("Time (years)" )
+        ax18.set_title("IGBT and diode life period")
+        #ax18.grid(axis="y", which="both")
+
+        # Right axis (Diode)
+        ax18_right = ax18.twinx()
+        ax18_right.bar("Diode", df_2_new["Life_D"].iloc[0])
+        ax18_right.set_ylabel("Time (years)")
+        #ax18_right.yaxis.grid(True, which="both")  # right axis grid
+
+        plt.savefig(f"{Location_plots}/18_Life_IGBT_and_Diode.png")
+        plt.close(fig18)
+
+
+        # -------------------------------------------------
+        # Figure 19: Switch life
+        # -------------------------------------------------
+
+        fig19, ax19 = plt.subplots(figsize=(6.4, 4.8))
+        ax19.bar("Switch", df_2_new["Life_switch"].iloc[0], width=0.4)  # width < 0.8 = thinner bar
+        ax19.set_ylabel("Time (years)" )
+        ax19.set_title("Switch life period")
+        ax19.grid(True)
+        plt.tight_layout()
+        plt.savefig(f"{Location_plots}/19_Life_switch.png")
+        plt.close(fig19)
+
+        # -------------------------------------------------
         # Carrying out slicing for df1 to define plot window
         # -------------------------------------------------
 
         # Define the time window
-        t_start = df_1["time_s"].max() - 0.04 + df_2["dt"].iloc[0]
-        t_end = df_1["time_s"].max() - 0.02 + df_2["dt"].iloc[0]
+        t_start = df_1["time_s"].max() - 0.04 + df_2_new["dt"].iloc[0]
+        t_end = df_1["time_s"].max() - 0.02 + df_2_new["dt"].iloc[0]
 
-        print("t_start",t_start)
-        print("t_end",t_end)
+
 
         df_slice = df_1[(df_1["time_s"] >= t_start) & (df_1["time_s"] <= t_end)].copy()
         # Shift time so it starts at 0
         df_slice["time_shifted"] = df_slice["time_s"] - df_slice["time_s"].iloc[0]
+
 
         # -------------------------------------------------
         # Figure 4: Instantaneous modulation
@@ -348,7 +376,7 @@ class Plotting_class:
         plt.savefig(f"{Location_plots}/16_inverter_dc_voltage.png")
         plt.close(fig16)
 
-
+        '''
         # -------------------------------------------------
         # Figure 17: IGBT and Diode heat cycles
         # -------------------------------------------------
@@ -364,42 +392,7 @@ class Plotting_class:
         ax17.grid(True)
         plt.savefig(f"{Location_plots}/17_IGBT_and_Diode_heat_cycles.png")
         plt.close(fig17)
-
-
-        # -------------------------------------------------
-        # Figure 18: IGBT and Diode Life (Dual Y-Axis, Log Scale)
-        # -------------------------------------------------
-
-        fig18, ax18 = plt.subplots(figsize=(6.4, 4.8))
-
-        # Left axis (IGBT)
-        ax18.bar("IGBT", df_2["Life_I"].iloc[0])
-        ax18.set_ylabel("Time (years)" )
-        ax18.set_title("IGBT and diode life period")
-        #ax18.grid(axis="y", which="both")
-
-        # Right axis (Diode)
-        ax18_right = ax18.twinx()
-        ax18_right.bar("Diode", df_2["Life_D"].iloc[0])
-        ax18_right.set_ylabel("Time (years)")
-        #ax18_right.yaxis.grid(True, which="both")  # right axis grid
-
-        plt.savefig(f"{Location_plots}/18_Life_IGBT_and_Diode.png")
-        plt.close(fig18)
-
-
-        # -------------------------------------------------
-        # Figure 19: Switch life
-        # -------------------------------------------------
-
-        fig19, ax19 = plt.subplots(figsize=(6.4, 4.8))
-        ax19.bar("Switch", df_2["Life_switch"].iloc[0], width=0.4)  # width < 0.8 = thinner bar
-        ax19.set_ylabel("Time (years)" )
-        ax19.set_title("Switch life period")
-        ax19.grid(True)
-        plt.tight_layout()
-        plt.savefig(f"{Location_plots}/19_Life_switch.png")
-        plt.close(fig19)
+        '''
 
 
         # -------------------------------------------------
