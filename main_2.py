@@ -182,7 +182,6 @@ S,Is,phi,P,Q,Vs = Calculation_functions_class.compute_power_flow_from_pf(P=P,
                                                                          inverter_phases= inverter_phases,
                                                                          modulation_scheme=modulation_scheme)  # Inverter Power Flow
 
-
 if design_control == "inverter":
     S,Is,phi,P,Q,Vs,N_parallel = Calculation_functions_class.compute_power_flow_from_pf_design_control_inverter(overshoot_margin_inverter,
                                                        inverter_phases=inverter_phases,
@@ -429,11 +428,11 @@ for chunk_start in range(0, num_secs, chunk_seconds):
             "P_sw_D":      Calculation_functions_class.cat(P_sw_D_list),
             "P_con_I":     Calculation_functions_class.cat(P_con_I_list),
             "P_con_D":     Calculation_functions_class.cat(P_con_D_list),
-            "P_leg_all":       Calculation_functions_class.cat(P_leg_list),
+            "P_leg_all":   Calculation_functions_class.cat(P_leg_list),
             "vs_inverter": Calculation_functions_class.cat(vs_list),
             "is_inverter": Calculation_functions_class.cat(is_inv_list),
-            "TjI_all":Calculation_functions_class.cat(TjI_list),
-            "TjD_all":Calculation_functions_class.cat(TjD_list)})
+            "TjI_all":     Calculation_functions_class.cat(TjI_list),
+            "TjD_all":     Calculation_functions_class.cat(TjD_list)})
 
         df_1.to_parquet(f"{df1_dir}/df_1_{chunk_no}.parquet", engine="pyarrow", compression="zstd")
 
@@ -495,8 +494,7 @@ for chunk_start in range(0, num_secs, chunk_seconds):
         "TjI_delta": TjI_delta,
         "TjD_delta": TjD_delta,
         "Nf_I": Nf_I,
-        "Nf_D": Nf_D
-        })
+        "Nf_D": Nf_D})
 
     for col in ["time_period_df2","TjI_mean", "TjD_mean", "TjI_delta", "TjD_delta", "Nf_I", "Nf_D"]:
         df_2[col] = df_2[col].astype("float32")
@@ -518,20 +516,13 @@ Calculation_functions_class.merge_parquet_files(df2_files, os.path.join(Location
 
 df_2 = pd.read_parquet(os.path.join(Location_dataframes, "df_2.parquet"), engine="pyarrow")
 
+Nf_I   = df_2["Nf_I"    ].to_numpy()
+Nf_D   = df_2["Nf_D"    ].to_numpy()
+TjI_mean = df_2["TjI_mean"].to_numpy()
+TjD_mean = df_2["TjD_mean"].to_numpy()
 
-Nf_I_sec   = df_2["Nf_I"    ].to_numpy()
-Nf_D_sec   = df_2["Nf_D"    ].to_numpy()
-TjI_mean_s = df_2["TjI_mean"].to_numpy()
-TjD_mean_s = df_2["TjD_mean"].to_numpy()
-
-
-Nf_I = np.repeat(Nf_I_sec, f)
-Nf_D = np.repeat(Nf_D_sec, f)
-TjI_mean = np.repeat(TjI_mean_s, f)
-TjD_mean = np.repeat(TjD_mean_s, f)
-
-Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_I, pf = pf, Component_max_lifetime = IGBT_max_lifetime)
-Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_D, pf = pf, Component_max_lifetime = Diode_max_lifetime)
+Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = np.repeat(Nf_I, f), pf = pf, Component_max_lifetime = IGBT_max_lifetime)
+Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = np.repeat(Nf_D, f), pf = pf, Component_max_lifetime = Diode_max_lifetime)
 Life_switch = min(Life_I, Life_D)
 
 print('Life_I',Life_I)
@@ -539,8 +530,7 @@ print('Life_D',Life_D)
 
 df_2.loc[df_2.index[0], ["Life_I", "Life_D", "Life_switch", "dt"]] = [float(Life_I), float(Life_D), float(Life_switch), float(dt)]
 
-end_time = time.time()
-print("Execution time all code:", end_time - start_time, "seconds")
+
 
 '################################################################################################################################################################'
 'Monte carlo-based reliability assessment'
@@ -584,7 +574,6 @@ _, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_ = Calculation_
                                                                                                                      pf = pf,               # Input = float
                                                                                                                      Life = Life_D ,        # Input = float
                                                                                                                      f=f)                   # Input = float
-
 #----------------------------------------#
 # Normal distribution of every variable to calculate the variability of N_f
 #----------------------------------------#
@@ -635,7 +624,6 @@ Nf_D_normal_distribution = Calculation_functions_class.Cycles_to_failure(A=A_nor
                                                                          t_cycle_heat=t_cycle_float_normal_distribution,
                                                                          ar=ar_normal_distribution )
 
-
 Life_period_I_normal_distribution = Calculation_functions_class.Lifecycle_normal_distribution_calculation_acceleration_factor(Nf=Nf_I_normal_distribution, f=f, Component_max_lifetime=IGBT_max_lifetime)
 Life_period_D_normal_distribution = Calculation_functions_class.Lifecycle_normal_distribution_calculation_acceleration_factor(Nf=Nf_D_normal_distribution, f=f, Component_max_lifetime=Diode_max_lifetime)
 Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distribution,Life_period_D_normal_distribution)
@@ -664,7 +652,6 @@ df_3 = pd.DataFrame({
 
 df_3.loc[df_3.index[0], ["N_parallel"]] = [float(N_parallel)]
 
-
 df_4 = pd.DataFrame({
     "A_normal_distribution": A_normal_distribution,
     "alpha_normal_distribution": alpha_normal_distribution,
@@ -690,17 +677,12 @@ df_4 = pd.DataFrame({
     "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution,
     "inverter_phases":inverter_phases})
 
-
-timestamp = "main_2"
-
-
 if saving_dataframes == True:
     save_dataframes(df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_dataframes="dataframe_files",timestamp=timestamp)
-
-
 
 if plotting_values == True:
     Plotting_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures",timestamp=timestamp)
 
-
+end_time = time.time()
+print("Execution time all code:", end_time - start_time, "seconds")
 

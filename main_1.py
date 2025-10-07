@@ -377,6 +377,9 @@ df_1 = pd.DataFrame({
     "is_inverter": Calculation_functions_class.cat(is_inv_list),
 })
 
+del sec_idx_list, time_list, m_list, is_I_list, is_D_list, P_sw_I_list, P_sw_D_list
+del P_con_I_list, P_con_D_list, P_leg_list, TjI_list, TjD_list, vs_list, is_inv_list
+
 TjI_all = Calculation_functions_class.cat(TjI_list)
 TjD_all = Calculation_functions_class.cat(TjD_list)
 
@@ -432,9 +435,6 @@ Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(N
 print('Life_I',Life_I)
 print('Life_D',Life_D)
 
-print("len(Nf_I)",len(Nf_I))
-print("len(Nf_D)",len(Nf_D))
-
 Life_switch = min(Life_I, Life_D)
 
 end_time = time.time()
@@ -462,8 +462,6 @@ df_2.at[df_2.index[0], "Life_D"]     = np.float64(Life_D)
 df_2.at[df_2.index[0], "Life_switch"]= np.float64(Life_switch)
 df_2.at[df_2.index[0], "dt"]         = np.float64(dt)
 
-del time_period_df2, TjD_delta,TjI_delta
-
 '################################################################################################################################################################'
 'Monte carlo-based reliability assessment'
 '################################################################################################################################################################'
@@ -488,7 +486,6 @@ number_of_yearly_cycles ,Yearly_life_consumption_I, Tj_mean_float_I, delta_Tj_fl
                                                                                                                                                        pf = pf,               # Input = float
                                                                                                                                                        Life = Life_I,         # Input = float
                                                                                                                                                        f = f)                 # Input = float
-
 
 _, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_ = Calculation_functions_class.delta_t_calculations(A = A,             # Input = float
                                                                                                                      alpha = alpha,         # Input = float
@@ -569,6 +566,7 @@ Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distrib
 # Saving dataframes
 #----------------------------------------#
 
+
 df_3 = pd.DataFrame({
     "S":S,
     "P": P,
@@ -577,8 +575,11 @@ df_3 = pd.DataFrame({
     "pf": pf,
     "Vs": Vs,
     "Is":Is,
-    "V_dc": V_dc,
-    "N_parallel":N_parallel})
+    "V_dc": V_dc})
+
+df_3.loc[df_3.index[0], ["N_parallel"]] = [float(N_parallel)]
+
+del S, P, Q, phi,pf,Vs,Is,V_dc
 
 df_4 = pd.DataFrame({
     "A_normal_distribution": A_normal_distribution,
@@ -606,7 +607,6 @@ df_4 = pd.DataFrame({
     "inverter_phases":inverter_phases})
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-timestamp = "main_1"
 
 if saving_dataframes == True:
     save_dataframes(df_1=df_1, df_2=df_2, df_3=df_3, df_4=df_4, Location_dataframes="dataframe_files",timestamp=timestamp)

@@ -918,7 +918,7 @@ class Calculation_functions_class:
         Tj_mean = np.ascontiguousarray(Tj_mean, dtype=np.float64)
         Tj_mean_float = Tj_mean.mean()
 
-        number_of_yearly_cycles = float(3600 * 24 * 365 * ((len(Nf)*f) / len(pf)))
+        number_of_yearly_cycles = float((3600 * 24 * 365 * ((len(Nf)) / len(pf)))*f)
         Yearly_life_consumption_I = (1 / Life)
 
         #delta_Tj_float = ((alpha / (beta1 * np.log(ar))) * (lambertw((beta1 * np.log(ar) / alpha) * ((((( number_of_yearly_cycles / Yearly_life_consumption_I) / (A * ((C + ((t_cycle_float) ** gamma)) / (C + 1)) * (np.exp(Ea / (k_b * Tj_mean_float))) * fd)) * ar ** (-beta0))) ** (1 / alpha)))))
