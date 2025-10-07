@@ -290,7 +290,7 @@ def _kernel_key_tuple(Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off, I_ref, V_ref,
 
     return (r(Vs), r(Is), r(phi), r(V_dc), r(pf), r(M), r(f_sw), r(t_on), r(t_off), r(I_ref), r(V_ref), r(Err_D), r(R_IGBT), r(V_0_IGBT), r(R_D), r(V_0_D), r(omega), r(dt))
 
-@lru_cache(maxsize=40000)
+@lru_cache(maxsize=20000)
 def _build_kernel_one_second_cached(key):
 
     (Vs, Is, phi, V_dc, pf, M, f_sw, t_on, t_off,I_ref, V_ref, Err_D, R_IGBT, V_0_IGBT, R_D, V_0_D, omega, dt) = key

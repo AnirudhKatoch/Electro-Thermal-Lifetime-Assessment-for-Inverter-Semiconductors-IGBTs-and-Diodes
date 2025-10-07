@@ -377,11 +377,11 @@ df_1 = pd.DataFrame({
     "is_inverter": Calculation_functions_class.cat(is_inv_list),
 })
 
-del sec_idx_list, time_list, m_list, is_I_list, is_D_list, P_sw_I_list, P_sw_D_list
-del P_con_I_list, P_con_D_list, P_leg_list, TjI_list, TjD_list, vs_list, is_inv_list
-
 TjI_all = Calculation_functions_class.cat(TjI_list)
 TjD_all = Calculation_functions_class.cat(TjD_list)
+
+del sec_idx_list, time_list, m_list, is_I_list, is_D_list, P_sw_I_list, P_sw_D_list
+del P_con_I_list, P_con_D_list, P_leg_list, TjI_list, TjD_list, vs_list, is_inv_list
 
 TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = TjI_all, time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
 TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = TjD_all, time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)

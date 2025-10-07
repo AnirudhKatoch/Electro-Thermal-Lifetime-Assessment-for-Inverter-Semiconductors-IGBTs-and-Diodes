@@ -300,7 +300,7 @@ class Plotting_class:
 
         fig12, ax12 = plt.subplots(figsize=(6.4, 4.8))
         ax12.plot(time_period_df_3, df_3["S"], label="Apparent power", linewidth=5)
-        ax12.plot(time_period_df_3, df_3["P"], label="Active power")
+        ax12.plot(time_period_df_3, df_3["P"], label="Active power", linewidth=5)
         ax12.plot(time_period_df_3, df_3["Q"], label="Reactive power")
         ax12.set_xlabel(time_label_df3)
         ax12.set_ylabel("Power (W)")
