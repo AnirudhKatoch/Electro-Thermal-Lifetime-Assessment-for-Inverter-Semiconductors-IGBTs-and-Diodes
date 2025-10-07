@@ -507,7 +507,7 @@ class Plotting_class:
             raise ValueError(f"Unsupported inverter_phases={inverter_phases}; expected 1 or 3.")
 
         # Parallel devices per position (store N_parallel earlier in df_4; default 1 if absent)
-        N_parallel = df_3["N_parallel"].iloc[0]
+        N_parallel = int(df_3["N_parallel"].iloc[0])
 
         # 1) Device-level lifetime samples (min of IGBT/Diode per *device*)
         sw_samples = np.asarray(df_4["Life_period_switch_normal_distribution"])  # 1D array

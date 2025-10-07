@@ -370,15 +370,20 @@ df_1 = pd.DataFrame({
     "P_sw_D":      Calculation_functions_class.cat(P_sw_D_list),
     "P_con_I":     Calculation_functions_class.cat(P_con_I_list),
     "P_con_D":     Calculation_functions_class.cat(P_con_D_list),
-    "P_leg_all":       Calculation_functions_class.cat(P_leg_list),
-    "TjI_all":       Calculation_functions_class.cat(TjI_list),
-    "TjD_all":       Calculation_functions_class.cat(TjD_list),
+    "P_leg_all":   Calculation_functions_class.cat(P_leg_list),
+    "TjI_all":     Calculation_functions_class.cat(TjI_list),
+    "TjD_all":     Calculation_functions_class.cat(TjD_list),
     "vs_inverter": Calculation_functions_class.cat(vs_list),
     "is_inverter": Calculation_functions_class.cat(is_inv_list),
 })
 
-TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = np.array(df_1["TjI_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
-TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = np.array(df_1["TjD_all"]), time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
+TjI_all = Calculation_functions_class.cat(TjI_list)
+TjD_all = Calculation_functions_class.cat(TjD_list)
+
+TjI_mean, TjI_delta, t_cycle_heat_I, time_period_df2 = Calculation_functions_class.window_stats(temp = TjI_all, time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
+TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_class.window_stats(temp = TjD_all, time_window = 0.02,steps_per_sec=int(1/dt), pf = pf)
+
+del TjI_all,TjD_all
 
 #----------------------------------------#
 # Life cycle calculations (Its use  model from research paper and if that does not work it just uses static model of that defined model)
@@ -387,9 +392,6 @@ TjD_mean, TjD_delta, t_cycle_heat_D, _               = Calculation_functions_cla
 #----------------------------------------#
 # IGBT
 #----------------------------------------#
-
-from Electro_thermal_behavior_file import _build_kernel_one_second_cached
-print(_build_kernel_one_second_cached.cache_info())
 
 Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
                                                      alpha=alpha,
@@ -430,10 +432,37 @@ Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(N
 print('Life_I',Life_I)
 print('Life_D',Life_D)
 
+print("len(Nf_I)",len(Nf_I))
+print("len(Nf_D)",len(Nf_D))
+
 Life_switch = min(Life_I, Life_D)
 
 end_time = time.time()
 print("Execution time all code:", end_time - start_time, "seconds")
+
+(time_period_df2, TjI_mean, TjD_mean, TjI_delta, TjD_delta, Nf_I, Nf_D) = Calculation_functions_class.downsample_arrays_df_2(group_size=f,
+                                                                                                                             time_period_df2=time_period_df2,
+                                                                                                                             TjI_mean=TjI_mean,
+                                                                                                                             TjD_mean=TjD_mean,
+                                                                                                                             TjI_delta=TjI_delta,
+                                                                                                                             TjD_delta=TjD_delta,
+                                                                                                                             Nf_I=Nf_I,
+                                                                                                                             Nf_D=Nf_D)
+df_2 = pd.DataFrame({
+    "time_period_df2": time_period_df2,
+    "TjI_mean": TjI_mean,
+    "TjD_mean": TjD_mean,
+    "TjI_delta": TjI_delta,
+    "TjD_delta": TjD_delta,
+    "Nf_I": Nf_I,
+    "Nf_D": Nf_D})
+
+df_2.at[df_2.index[0], "Life_I"]     = np.float64(Life_I)
+df_2.at[df_2.index[0], "Life_D"]     = np.float64(Life_D)
+df_2.at[df_2.index[0], "Life_switch"]= np.float64(Life_switch)
+df_2.at[df_2.index[0], "dt"]         = np.float64(dt)
+
+del time_period_df2, TjD_delta,TjI_delta
 
 '################################################################################################################################################################'
 'Monte carlo-based reliability assessment'
@@ -457,7 +486,8 @@ number_of_yearly_cycles ,Yearly_life_consumption_I, Tj_mean_float_I, delta_Tj_fl
                                                                                                                                                        ar = ar,               # Input = float
                                                                                                                                                        Nf = Nf_I,             # Input = float
                                                                                                                                                        pf = pf,               # Input = float
-                                                                                                                                                       Life = Life_I )        # Input = float
+                                                                                                                                                       Life = Life_I,         # Input = float
+                                                                                                                                                       f = f)                 # Input = float
 
 
 _, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_ = Calculation_functions_class.delta_t_calculations(A = A,             # Input = float
@@ -474,7 +504,8 @@ _, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_ = Calculation_
                                                                                                                      ar = ar,               # Input = float
                                                                                                                      Nf = Nf_D,             # Input = float
                                                                                                                      pf = pf,               # Input = float
-                                                                                                                     Life = Life_D )        # Input = float
+                                                                                                                     Life = Life_D,        # Input = float
+                                                                                                                     f = f )                   # Input = float
 
 #--------------------------------------------------------------------------------#
 # Normal distribution of every variable to calculate the variability of N_f
@@ -538,23 +569,6 @@ Life_period_switch_normal_distribution = np.minimum(Life_period_I_normal_distrib
 # Saving dataframes
 #----------------------------------------#
 
-
-df_2 = pd.DataFrame({
-    "time_period_df2":time_period_df2,
-    "TjI_mean": TjI_mean,
-    "TjD_mean": TjD_mean,
-    "TjI_delta": TjI_delta,
-    "TjD_delta": TjD_delta,
-    "Nf_I": Nf_I,
-    "Nf_D": Nf_D,
-    #"t_cycle_heat_I":t_cycle_heat_I,
-    #"t_cycle_heat_D":t_cycle_heat_D,
-    "Life_I":Life_I,
-    "Life_D":Life_D,
-    "Life_switch":Life_switch,
-    "dt":dt})
-
-
 df_3 = pd.DataFrame({
     "S":S,
     "P": P,
@@ -591,8 +605,8 @@ df_4 = pd.DataFrame({
     "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution,
     "inverter_phases":inverter_phases})
 
-
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+timestamp = "main_1"
 
 if saving_dataframes == True:
     save_dataframes(df_1=df_1, df_2=df_2, df_3=df_3, df_4=df_4, Location_dataframes="dataframe_files",timestamp=timestamp)

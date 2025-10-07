@@ -18,15 +18,16 @@ class Input_parameters_class:
         # In "inverter" if your power requirements are above the rated power of the switch the system will automatically put switches in parallel to match the power requirements.
         self.overshoot_margin_inverter = 0
 
-        df = pd.read_parquet(f"Load_profiles/synPRO_el_family_1_sec_1_year.parquet", engine="pyarrow")
-        self.P = np.array(df["P_el"])
+        #df = pd.read_parquet(f"Load_profiles/synPRO_el_family_1_sec_1_year.parquet", engine="pyarrow")
+        #self.P = np.array(df["P_el"])
+        #self.P = self.P[:86400]
 
-        del df
+        #del df
 
-        #self.P = np.full(int(3600*24*4),34500*0.3) #test with this
-        self.pf = np.full(len(self.P), 1, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
+        self.P = np.full(int(3600*24),34500*0.3) #test with this
+        self.pf =np.full(len(self.P), 0.3, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
         self.Q = np.full(len(self.pf), 0, dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
-        self.Vs = np.full(len(self.pf), 230)     # [V] Inverter phase RMS AC side voltage
+        self.Vs =np.full(len(self.pf), 230)     # [V] Inverter phase RMS AC side voltage
         #self.Vs = np.array([])                          # [V] Inverter RMS AC side voltage
         self.V_dc = np.full(len(self.pf), 545)   # [V] Inverter DC side voltage
         self.f = 50                                      # [Hz] Grid frequency

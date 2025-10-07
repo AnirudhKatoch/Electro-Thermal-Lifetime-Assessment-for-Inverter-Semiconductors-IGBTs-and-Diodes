@@ -857,7 +857,8 @@ class Calculation_functions_class:
                              ar,            # Input = float
                              Nf,            # Input = array
                              pf,            # Input = array
-                             Life):         # Input = float
+                             Life,          # Input = float
+                             f):            # Input = float
 
         """
 
@@ -896,6 +897,8 @@ class Calculation_functions_class:
             Power factor time-series (used to normalize cycle counts).
         Life : float
             Expected device lifetime (years).
+        f : float
+            Grid frequency [Hz].
 
         Returns
         -------
@@ -915,7 +918,7 @@ class Calculation_functions_class:
         Tj_mean = np.ascontiguousarray(Tj_mean, dtype=np.float64)
         Tj_mean_float = Tj_mean.mean()
 
-        number_of_yearly_cycles = float(3600 * 24 * 365 * (len(Nf) / len(pf)))
+        number_of_yearly_cycles = float(3600 * 24 * 365 * ((len(Nf)*f) / len(pf)))
         Yearly_life_consumption_I = (1 / Life)
 
         #delta_Tj_float = ((alpha / (beta1 * np.log(ar))) * (lambertw((beta1 * np.log(ar) / alpha) * ((((( number_of_yearly_cycles / Yearly_life_consumption_I) / (A * ((C + ((t_cycle_float) ** gamma)) / (C + 1)) * (np.exp(Ea / (k_b * Tj_mean_float))) * fd)) * ar ** (-beta0))) ** (1 / alpha)))))
@@ -1449,3 +1452,41 @@ class Calculation_functions_class:
             sample_rate_hz = 1
 
         return sample_rate_hz
+
+    @staticmethod
+    def downsample_arrays_df_2(group_size, time_period_df2,TjI_mean, TjD_mean,TjI_delta, TjD_delta,Nf_I, Nf_D):
+
+        n = len(TjI_mean)
+        n_blocks = (n + group_size - 1) // group_size  # ceil division
+
+        # reshape arrays (pad last group if needed)
+        pad_len = n_blocks * group_size - n
+        if pad_len:
+            pad = np.full(pad_len, np.nan)
+            TjI_mean = np.concatenate([TjI_mean, pad])
+            TjD_mean = np.concatenate([TjD_mean, pad])
+            TjI_delta = np.concatenate([TjI_delta, pad])
+            TjD_delta = np.concatenate([TjD_delta, pad])
+            Nf_I = np.concatenate([Nf_I, pad])
+            Nf_D = np.concatenate([Nf_D, pad])
+
+        # reshape and take nanmean over axis=1
+        def block_mean(arr):
+            return np.nanmean(arr.reshape(-1, group_size), axis=1)
+
+        TjI_mean_ds = block_mean(TjI_mean)
+        TjD_mean_ds = block_mean(TjD_mean)
+        TjI_delta_ds = block_mean(TjI_delta)
+        TjD_delta_ds = block_mean(TjD_delta)
+        Nf_I_ds = block_mean(Nf_I)
+        Nf_D_ds = block_mean(Nf_D)
+
+        # take first of each 50-sample block for time
+        time_period_df2_ds = time_period_df2[::group_size]
+
+        return (time_period_df2_ds, TjI_mean_ds, TjD_mean_ds,TjI_delta_ds, TjD_delta_ds, Nf_I_ds, Nf_D_ds)
+
+    @staticmethod
+    def f_32( x):
+        """Convert scalars, lists, or arrays to np.float32 safely."""
+        return np.asarray(x, dtype=np.float32)

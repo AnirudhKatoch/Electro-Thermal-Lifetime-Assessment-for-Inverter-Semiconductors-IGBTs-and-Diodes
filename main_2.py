@@ -496,8 +496,6 @@ for chunk_start in range(0, num_secs, chunk_seconds):
         "TjD_delta": TjD_delta,
         "Nf_I": Nf_I,
         "Nf_D": Nf_D
-        #"t_cycle_heat_I":t_cycle_heat_I,
-        #"t_cycle_heat_D":t_cycle_heat_D,
         })
 
     for col in ["time_period_df2","TjI_mean", "TjD_mean", "TjI_delta", "TjD_delta", "Nf_I", "Nf_D"]:
@@ -505,12 +503,7 @@ for chunk_start in range(0, num_secs, chunk_seconds):
 
     #df_2["time_period_df2"] = df_2["time_period_df2"].astype("int32 ")  # or int32 if it’s always integer seconds
 
-    df_2.to_parquet(
-        os.path.join(df2_dir, f"df_2_{chunk_no:04d}.parquet"),
-        engine="pyarrow",
-        compression="zstd",
-        compression_level=7,
-        use_dictionary=True)
+    df_2.to_parquet(os.path.join(df2_dir, f"df_2_{chunk_no:04d}.parquet"), engine="pyarrow",compression="zstd",compression_level=7,use_dictionary=True)
 
     del time_period_df2 , TjI_mean, TjD_mean, TjI_delta , TjD_delta , Nf_I , Nf_D , t_cycle_heat_I , t_cycle_heat_D
     del df_2
@@ -525,26 +518,29 @@ Calculation_functions_class.merge_parquet_files(df2_files, os.path.join(Location
 
 df_2 = pd.read_parquet(os.path.join(Location_dataframes, "df_2.parquet"), engine="pyarrow")
 
-Nf_I = df_2["Nf_I"]
-Nf_D = df_2["Nf_D"]
-TjI_mean = df_2["TjI_mean"]
-TjD_mean = df_2["TjD_mean"]
+
+Nf_I_sec   = df_2["Nf_I"    ].to_numpy()
+Nf_D_sec   = df_2["Nf_D"    ].to_numpy()
+TjI_mean_s = df_2["TjI_mean"].to_numpy()
+TjD_mean_s = df_2["TjD_mean"].to_numpy()
+
+
+Nf_I = np.repeat(Nf_I_sec, f)
+Nf_D = np.repeat(Nf_D_sec, f)
+TjI_mean = np.repeat(TjI_mean_s, f)
+TjD_mean = np.repeat(TjD_mean_s, f)
 
 Life_I = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_I, pf = pf, Component_max_lifetime = IGBT_max_lifetime)
 Life_D = Calculation_functions_class.Lifecycle_calculation_acceleration_factor(Nf = Nf_D, pf = pf, Component_max_lifetime = Diode_max_lifetime)
 Life_switch = min(Life_I, Life_D)
 
-for c in ["Life_I", "Life_D", "Life_switch", "dt"]:
-    df_2[c] = pd.Series(pd.NA, index=df_2.index, dtype="Float32")
-
-first = df_2.index[0]
-df_2.at[first, "Life_I"]     = np.float32(Life_I)
-df_2.at[first, "Life_D"]     = np.float32(Life_D)
-df_2.at[first, "Life_switch"]= np.float32(Life_switch)
-df_2.at[first, "dt"]         = np.float32(dt)
-
 print('Life_I',Life_I)
 print('Life_D',Life_D)
+
+df_2.loc[df_2.index[0], ["Life_I", "Life_D", "Life_switch", "dt"]] = [float(Life_I), float(Life_D), float(Life_switch), float(dt)]
+
+end_time = time.time()
+print("Execution time all code:", end_time - start_time, "seconds")
 
 '################################################################################################################################################################'
 'Monte carlo-based reliability assessment'
@@ -553,8 +549,6 @@ print('Life_D',Life_D)
 #----------------------------------------#
 # Calculating delta T from mean T mean and heat cycle values
 #----------------------------------------#
-
-
 
 number_of_yearly_cycles ,Yearly_life_consumption_I, Tj_mean_float_I, delta_Tj_float_I,t_cycle_float = Calculation_functions_class.delta_t_calculations(A = A,                 # Input = float
                                                                                                                                                        alpha = alpha,         # Input = float
@@ -570,7 +564,8 @@ number_of_yearly_cycles ,Yearly_life_consumption_I, Tj_mean_float_I, delta_Tj_fl
                                                                                                                                                        ar = ar,               # Input = float
                                                                                                                                                        Nf = Nf_I,             # Input = float
                                                                                                                                                        pf = pf,               # Input = float
-                                                                                                                                                       Life = Life_I )        # Input = float
+                                                                                                                                                       Life = Life_I,         # Input = float
+                                                                                                                                                       f =f)                  # Input = float
 
 
 _, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_ = Calculation_functions_class.delta_t_calculations(A = A,             # Input = float
@@ -587,7 +582,8 @@ _, Yearly_life_consumption_D, Tj_mean_float_D, delta_Tj_float_D,_ = Calculation_
                                                                                                                      ar = ar,               # Input = float
                                                                                                                      Nf = Nf_D,             # Input = float
                                                                                                                      pf = pf,               # Input = float
-                                                                                                                     Life = Life_D )        # Input = float
+                                                                                                                     Life = Life_D ,        # Input = float
+                                                                                                                     f=f)                   # Input = float
 
 #----------------------------------------#
 # Normal distribution of every variable to calculate the variability of N_f
@@ -664,8 +660,10 @@ df_3 = pd.DataFrame({
     "pf": pf,
     "Vs": Vs,
     "Is":Is,
-    "V_dc": V_dc,
-    "N_parallel":N_parallel})
+    "V_dc": V_dc}).astype("float32")
+
+df_3.loc[df_3.index[0], ["N_parallel"]] = [float(N_parallel)]
+
 
 df_4 = pd.DataFrame({
     "A_normal_distribution": A_normal_distribution,
@@ -692,11 +690,14 @@ df_4 = pd.DataFrame({
     "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution,
     "inverter_phases":inverter_phases})
 
+
+timestamp = "main_2"
+
+
 if saving_dataframes == True:
     save_dataframes(df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_dataframes="dataframe_files",timestamp=timestamp)
 
-end_time = time.time()
-print("Execution time all code:", end_time - start_time, "seconds")
+
 
 if plotting_values == True:
     Plotting_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures",timestamp=timestamp)

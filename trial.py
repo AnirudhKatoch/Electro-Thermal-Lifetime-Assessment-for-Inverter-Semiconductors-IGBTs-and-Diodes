@@ -1,4 +1,1 @@
-import pstats
-
-p = pstats.Stats("profile_more_days.stats")
-p.sort_stats("tottime").print_stats(100)
+df_3.loc[df_3.index[0], ["N_parallel"]] = [float(N_parallel)]
