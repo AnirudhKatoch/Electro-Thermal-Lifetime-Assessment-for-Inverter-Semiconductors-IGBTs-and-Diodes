@@ -8,10 +8,18 @@ from datetime import datetime
 from Dataframe_saving_file import save_dataframes
 from Plotting_file import Plotting_class
 
+
+
+df = pd.read_parquet(f"Load_profiles/synPRO_el_family_main_1.parquet", engine="pyarrow")
+P = np.array(df["P_el"])
+del df
+pf = np.full(len(P), 1, dtype=float)  # [W] Inverter RMS Active power [Always give absolute values]
+
+Input_parameters = Input_parameters_class(P=P,pf=pf)
+
+
 start_time = time.time()
-
-Input_parameters = Input_parameters_class()
-
+Electro_thermal_behavior_class = Electro_thermal_behavior_class()
 Calculation_functions_class = Calculation_functions_class()
 
 '################################################################################################################################################################'
@@ -437,9 +445,6 @@ print('Life_D',Life_D)
 
 Life_switch = min(Life_I, Life_D)
 
-end_time = time.time()
-print("Execution time all code:", end_time - start_time, "seconds")
-
 (time_period_df2, TjI_mean, TjD_mean, TjI_delta, TjD_delta, Nf_I, Nf_D) = Calculation_functions_class.downsample_arrays_df_2(group_size=f,
                                                                                                                              time_period_df2=time_period_df2,
                                                                                                                              TjI_mean=TjI_mean,
@@ -607,12 +612,16 @@ df_4 = pd.DataFrame({
     "inverter_phases":inverter_phases})
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+Code_name = "main_1"
+timestamp = f"{Code_name}_{timestamp}"
 
 if saving_dataframes == True:
     save_dataframes(df_1=df_1, df_2=df_2, df_3=df_3, df_4=df_4, Location_dataframes="dataframe_files",timestamp=timestamp)
 
+
 if plotting_values == True:
     Plotting_class( df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_plots = "Figures",timestamp=timestamp)
 
-
+end_time = time.time()
+print("Execution time all code:", end_time - start_time, "seconds")
 

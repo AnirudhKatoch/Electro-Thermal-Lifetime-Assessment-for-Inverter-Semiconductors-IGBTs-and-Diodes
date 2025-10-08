@@ -9,9 +9,18 @@ from Dataframe_saving_file import save_dataframes
 from Plotting_file import Plotting_class
 import os
 
-start_time = time.time()
 
-Input_parameters = Input_parameters_class()
+df = pd.read_parquet(f"Load_profiles/synPRO_el_family_main_2_1_sec.parquet", engine="pyarrow")
+P = np.array(df["P_el"])
+del df
+pf = np.full(len(P), 1, dtype=float)
+
+Input_parameters = Input_parameters_class(P=P,pf=pf)
+
+
+start_time = time.time()
+Electro_thermal_behavior_class = Electro_thermal_behavior_class()
+Calculation_functions_class = Calculation_functions_class()
 
 '################################################################################################################################################################'
 'Input Parameters'
@@ -233,6 +242,8 @@ Tbr_p_D = np.zeros_like(r_paste, dtype=float) # [K] Temperature rise across the 
 Tbr_s_D = np.zeros_like(r_sink, dtype=float)  # [K] Temperature rise contributions of each Foster RC branch for the heatsink (sink → ambient) in Diode.
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+Code_name = "main_2"
+timestamp = f"{Code_name}_{timestamp}"
 num_secs = len(pf)
 
 Location_dataframes = f"{Location_dataframes}/{timestamp}"
@@ -676,6 +687,12 @@ df_4 = pd.DataFrame({
     "Life_period_D_normal_distribution":Life_period_D_normal_distribution,
     "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution,
     "inverter_phases":inverter_phases})
+
+
+
+
+
+
 
 if saving_dataframes == True:
     save_dataframes(df_1 = df_1, df_2 = df_2, df_3 = df_3, df_4 = df_4, Location_dataframes="dataframe_files",timestamp=timestamp)

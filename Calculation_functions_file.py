@@ -1350,7 +1350,20 @@ class Calculation_functions_class:
         return r_new, tau_new
 
     @staticmethod
-    def write_dataframe_fast(df, path, codec="zstd", level=7, row_group_size=1_000_000, data_page_size=1 << 16):
+    def write_dataframe_fast(df, path, codec="zstd", level=7, row_group_size=1_000_000, data_page_size=1 << 16 ):
+
+        """
+        Efficient Parquet writer that downcasts float64→float32 in place
+        to cut file size & IO time without making a full DF copy.
+        """
+        # --- Downcast float64 → float32 all at once ---
+        float_cols = df.select_dtypes(include=["float64"]).columns
+        if len(float_cols):
+            # This replaces the float64 block with a float32 block in one op
+            df[float_cols] = df[float_cols].astype(np.float32, copy=False)
+            gc.collect()
+
+
         table = pa.Table.from_pandas(df, preserve_index=False)
         pq.write_table(
             table,
