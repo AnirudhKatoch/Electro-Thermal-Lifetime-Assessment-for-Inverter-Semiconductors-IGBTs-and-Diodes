@@ -6,7 +6,7 @@ Calculation_functions_class = Calculation_functions_class()
 
 class Input_parameters_class:
 
-    def __init__(self,P=None,pf=None):
+    def __init__(self,P=None,pf=None,Q=None):
 
         self.saving_dataframes = True # Set True if you want to save dataframes and False if you don't want to save dataframes.
         self.plotting_values = True   # Set True if you want to plot values and False if you don't want to plot values.
@@ -18,36 +18,37 @@ class Input_parameters_class:
         # In "inverter" if your power requirements are above the rated power of the switch the system will automatically put switches in parallel to match the power requirements.
         self.overshoot_margin_inverter = 0
 
-        if P is None or pf is None:
+        if P is None or pf is None or Q is None:
 
             df = pd.read_parquet(f"Load_profiles/synPRO_el_family_main_3.parquet", engine="pyarrow")
             self.P = np.array(df["P_el"])             # [W] Inverter RMS Active power [Always give absolute values]
+            self.P = self.P[:86400]
             del df
             self.pf =np.full(len(self.P), 1, dtype=float)   # [-] power factor [Inductive is negative and capacitive is positive]
+            self.Q = np.full(len(self.P), 34500,dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
 
         self.P = np.asarray(P, dtype=float)
         self.pf = np.asarray(pf, dtype=float)
+        self.Q = np.asarray(Q, dtype=float)
 
-        self.Q = np.full(len(self.pf), 34500, dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
         self.Vs =np.full(len(self.pf), 230)     # [V] Inverter phase RMS AC side voltage
         #self.Vs = np.array([])                          # [V] Inverter RMS AC side voltage
         self.V_dc = np.full(len(self.pf), 545)   # [V] Inverter DC side voltage
 
-
         self.f = 50                                      # [Hz] Grid frequency
         self.M = 1.034                                   # [-] Inverter modulation index # Modulation cannot be above 1 as model does not take into account. Here I have done it barely to make the system follow physics law.
         self.Tamb = 298.15                               # [K] Ambient Temperature
-        self.dt = 0.001                                  # [s] Simulation timestep (1 ms)
+        self.dt = 0.002                                  # [s] Simulation timestep (1 ms)
 
         if (self.pf[0] == 0 and self.Q[0] == 0):
             raise ValueError(
-                "Invalid input: pf[0] = 0 and Q[0] = 0. "
+                "Invalid input: pf[0] = 0 and Q[0] = 0."
                 "When the power factor is zero, you must provide a nonzero Q[0] "
                 "(reactive power).")
 
         elif (self.pf[0] != 0 and self.P[0] == 0):
             raise ValueError(
-                "Invalid input: pf[0] ≠ 0 but P[0] = 0. "
+                "Invalid input: pf[0] ≠ 0 but P[0] = 0."
                 "When the power factor is nonzero, you must provide a nonzero P[0] "
                 "(active power).")
 

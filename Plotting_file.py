@@ -300,7 +300,7 @@ class Plotting_class:
 
         fig12, ax12 = plt.subplots(figsize=(6.4, 4.8))
         ax12.plot(time_period_df_3, df_3["S"], label="Apparent power", linewidth=5)
-        ax12.plot(time_period_df_3, df_3["P"], label="Active power", linewidth=5)
+        ax12.plot(time_period_df_3, df_3["P"], label="Active power", linewidth=2.5)
         ax12.plot(time_period_df_3, df_3["Q"], label="Reactive power")
         ax12.set_xlabel(time_label_df3)
         ax12.set_ylabel("Power (W)")
@@ -547,3 +547,16 @@ class Plotting_class:
         plt.tight_layout()
         plt.savefig(f"{Location_plots}/27_Number_of_switches_in_parallel.png")
         plt.close(fig27)
+
+        # -------------------------------------------------
+        # Figure 28: Execution time code
+        # -------------------------------------------------
+
+        fig28, ax28 = plt.subplots(figsize=(6.4, 4.8))
+        ax28.bar("Execution time", df_3["Execution_time"].iloc[0], width=0.4)  # width < 0.8 = thinner bar
+        ax28.set_ylabel("Value" )
+        ax28.set_title("Execution time for all code")
+        ax28.grid(True)
+        plt.tight_layout()
+        plt.savefig(f"{Location_plots}/28_Execution_time_for_all_code.png")
+        plt.close(fig28)
