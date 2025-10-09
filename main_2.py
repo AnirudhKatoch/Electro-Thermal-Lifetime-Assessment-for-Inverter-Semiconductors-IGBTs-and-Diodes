@@ -539,8 +539,6 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
 
     df_2.loc[df_2.index[0], ["Life_I", "Life_D", "Life_switch", "dt"]] = [float(Life_I), float(Life_D), float(Life_switch), float(dt)]
 
-
-
     '################################################################################################################################################################'
     'Monte carlo-based reliability assessment'
     '################################################################################################################################################################'
@@ -691,11 +689,6 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
         "Life_period_D_normal_distribution":Life_period_D_normal_distribution,
         "Life_period_switch_normal_distribution":Life_period_switch_normal_distribution,
         "inverter_phases":inverter_phases})
-
-
-
-
-
 
 
     if saving_dataframes == True:

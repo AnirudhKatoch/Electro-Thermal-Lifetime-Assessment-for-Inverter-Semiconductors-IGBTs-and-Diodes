@@ -1,6 +1,5 @@
 import numpy as np
 from Calculation_functions_file import Calculation_functions_class
-import pandas as pd
 
 Calculation_functions_class = Calculation_functions_class()
 
@@ -19,17 +18,13 @@ class Input_parameters_class:
         self.overshoot_margin_inverter = 0
 
         if P is None or pf is None or Q is None:
-
-            df = pd.read_parquet(f"Load_profiles/synPRO_el_family_main_3.parquet", engine="pyarrow")
-            self.P = np.array(df["P_el"])             # [W] Inverter RMS Active power [Always give absolute values]
-            self.P = self.P[:86400]
-            del df
+            self.P = np.full(86400, 30000.0, dtype=np.float64)
             self.pf =np.full(len(self.P), 1, dtype=float)   # [-] power factor [Inductive is negative and capacitive is positive]
             self.Q = np.full(len(self.P), 34500,dtype=float)  # [VAr] Inverter RMS Reactive power [Always give absolute values]
-
-        self.P = np.asarray(P, dtype=float)
-        self.pf = np.asarray(pf, dtype=float)
-        self.Q = np.asarray(Q, dtype=float)
+        else:
+            self.P = np.asarray(P, dtype=float)
+            self.pf = np.asarray(pf, dtype=float)
+            self.Q = np.asarray(Q, dtype=float)
 
         self.Vs =np.full(len(self.pf), 230)     # [V] Inverter phase RMS AC side voltage
         #self.Vs = np.array([])                          # [V] Inverter RMS AC side voltage

@@ -105,7 +105,7 @@ class Plotting_class:
         # -------------------------------------------------
 
         fig19, ax19 = plt.subplots(figsize=(6.4, 4.8))
-        ax19.bar("Switch", df_2_new["Life_switch"].iloc[0], width=0.4)  # width < 0.8 = thinner bar
+        ax19.bar("Switch", df_2_new["Life_switch"].iloc[0], width=0.2)  # width < 0.8 = thinner bar
         ax19.set_ylabel("Time (years)" )
         ax19.set_title("Switch life period")
         ax19.grid(True)
@@ -540,7 +540,7 @@ class Plotting_class:
         # -------------------------------------------------
 
         fig27, ax27 = plt.subplots(figsize=(6.4, 4.8))
-        ax27.bar("Number of switches", df_3["N_parallel"].iloc[0], width=0.4)  # width < 0.8 = thinner bar
+        ax27.bar("Number of switches", df_3["N_parallel"].iloc[0], width=0.2)  # width < 0.8 = thinner bar
         ax27.set_ylabel("Value" )
         ax27.set_title("Number of switches in parallel")
         ax27.grid(True)
@@ -553,8 +553,21 @@ class Plotting_class:
         # -------------------------------------------------
 
         fig28, ax28 = plt.subplots(figsize=(6.4, 4.8))
-        ax28.bar("Execution time", df_3["Execution_time"].iloc[0], width=0.4)  # width < 0.8 = thinner bar
-        ax28.set_ylabel("Value" )
+
+        exec_time = df_3["Execution_time"].iloc[0]
+        
+        if exec_time >= 3600:
+            exec_time /= 3600
+            time_unit = "Hours"
+        elif exec_time >= 60:
+            exec_time /= 60
+            time_unit = "Minutes"
+        else:
+            time_unit = "Seconds"
+
+        # Plot
+        ax28.bar("Execution time", exec_time, width=0.2)  # width < 0.8 = thinner bar
+        ax28.set_ylabel(time_unit)
         ax28.set_title("Execution time for all code")
         ax28.grid(True)
         plt.tight_layout()

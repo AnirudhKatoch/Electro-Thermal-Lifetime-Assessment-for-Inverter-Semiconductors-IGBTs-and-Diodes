@@ -9,8 +9,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     df = pd.read_parquet(f"Load_profiles/{args.profile}.parquet", engine="pyarrow")
-    P = df["P_el"].to_numpy(dtype=np.float64)[:86400]
-    pf = np.full(P.shape[0], 1.0, dtype=np.float64)
-    Q = np.full(P.shape[0], 1.0, dtype=np.float64)
+    P = df["P"].to_numpy(dtype=np.float64)
+    pf = df["pf"].to_numpy(dtype=np.float64)
+    Q = df["Q"].to_numpy(dtype=np.float64)
+    Loadprofile_name = args.profile
 
-    main_2(P=P, pf=pf, Q=Q,Loadprofile_name=args.profile)
+    main_2(P=P, pf=pf, Q=Q,Loadprofile_name=Loadprofile_name)
