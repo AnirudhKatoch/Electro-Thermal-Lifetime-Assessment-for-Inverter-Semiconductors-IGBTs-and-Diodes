@@ -4,6 +4,7 @@ import numpy as np
 from mother_function import main_2
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", required=True)
     args = parser.parse_args()
@@ -16,8 +17,8 @@ if __name__ == "__main__":
 
     del df
 
-    P = P[:86400]
-    pf = pf[:86400]
-    Q = Q[:86400]
+    #P = P[:86400]
+    #pf = pf[:86400]
+    #Q = Q[:86400]
 
-    main_2(P=P, pf=pf, Q=Q,Loadprofile_name=Loadprofile_name)
+    main_2(P=P ,pf=pf , Q=Q ,Loadprofile_name=Loadprofile_name)

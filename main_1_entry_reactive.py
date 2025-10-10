@@ -17,4 +17,8 @@ if __name__ == "__main__":
 
     del df
 
-    main_1(P=P, pf=pf, Q=Q, Loadprofile_name=Loadprofile_name)
+    #P = P[:86400]
+    #pf = pf[:86400]
+    #Q = Q[:86400]
+
+    main_1(P=P ,pf=pf , Q=Q ,Loadprofile_name=Loadprofile_name)

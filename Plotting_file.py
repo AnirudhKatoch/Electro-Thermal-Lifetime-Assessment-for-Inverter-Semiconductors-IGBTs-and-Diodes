@@ -381,14 +381,13 @@ class Plotting_class:
         plt.savefig(f"{Location_plots}/16_inverter_dc_voltage.png")
         plt.close(fig16)
 
-
         # -------------------------------------------------
         # Figure 17: IGBT and Diode heat cycles
         # -------------------------------------------------
 
         fig17, ax17 = plt.subplots(figsize=(6.4, 4.8))
-        ax17.plot(time_col_df2, df_2["t_cycle_heat_I"], label="IGBT",linewidth=5)
-        ax17.plot(time_col_df2, df_2["t_cycle_heat_D"], label="Diode")
+        ax17.plot(time_col_df2, df_2_new["t_cycle_heat_I"], label="IGBT",linewidth=5)
+        ax17.plot(time_col_df2, df_2_new["t_cycle_heat_D"], label="Diode")
         ax17.set_xlabel(time_label_df2)
         ax17.set_ylabel(time_label_df3)
         ax17.set_title("IGBT and Diode heat cycles timing")
@@ -397,8 +396,6 @@ class Plotting_class:
         ax17.grid(True)
         plt.savefig(f"{Location_plots}/17_IGBT_and_Diode_heat_cycles.png")
         plt.close(fig17)
-
-
 
         # -------------------------------------------------
         # Fig.20: Lifetime distribution of IGBT

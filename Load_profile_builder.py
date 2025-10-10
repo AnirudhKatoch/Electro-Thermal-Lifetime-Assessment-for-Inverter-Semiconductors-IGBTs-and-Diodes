@@ -72,7 +72,7 @@ df = df.reindex(full_index, method='ffill')
 
 max_value = df["P"].max()
 
-N_parallel = 50
+N_parallel = 1
 Rated_power = 34450 * N_parallel
 
 Factor_increase = 2
@@ -157,8 +157,8 @@ def load_profile_builder(df,Factor_increase):
         "pf": block_pf,
     }, index=df.index)
 
-    main_1.to_parquet(f"Load_profiles/alle_main_2_1_inverter_{Factor_increase}.parquet", engine="pyarrow", compression="zstd",compression_level=7,use_dictionary=True,)
-    main_2_1_sec.to_parquet(f"Load_profiles/alle_main_2_1_sec_inverter_{Factor_increase}.parquet", engine="pyarrow", compression="zstd",compression_level=7,use_dictionary=True,)
-    main_2_15_min.to_parquet(f"Load_profiles/alle_main_2_15_min_inverter_{Factor_increase}.parquet", engine="pyarrow", compression="zstd",compression_level=7,use_dictionary=True,)
+    main_1.to_parquet(f"Load_profiles/alle_main_2_1_{Factor_increase}.parquet", engine="pyarrow", compression="zstd",compression_level=7,use_dictionary=True,)
+    main_2_1_sec.to_parquet(f"Load_profiles/alle_main_2_1_sec_{Factor_increase}.parquet", engine="pyarrow", compression="zstd",compression_level=7,use_dictionary=True,)
+    main_2_15_min.to_parquet(f"Load_profiles/alle_main_2_15_min_{Factor_increase}.parquet", engine="pyarrow", compression="zstd",compression_level=7,use_dictionary=True,)
 
 load_profile_builder(df,Factor_increase)

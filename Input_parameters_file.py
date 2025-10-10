@@ -13,6 +13,7 @@ class Input_parameters_class:
         self.chunk_seconds = int(86400)
 
         self.design_control = "inverter" # "inverter" or "switch" , choose between two on what is the designing process,
+        self.N_parallel = 50
         # In "switch" you can directly give in power values for the switch
         # In "inverter" if your power requirements are above the rated power of the switch the system will automatically put switches in parallel to match the power requirements.
         self.overshoot_margin_inverter = 0

@@ -36,7 +36,7 @@ def main_1(P=None,pf=None,Q=None,Loadprofile_name=None):
     single_phase_inverter_topology = Input_parameters.single_phase_inverter_topology
     inverter_phases = Input_parameters.inverter_phases
     modulation_scheme = Input_parameters.modulation_scheme
-
+    N_parallel = Input_parameters.N_parallel
     # ----------------------------------------#
     # Max switch limits
     # ----------------------------------------#
@@ -180,7 +180,8 @@ def main_1(P=None,pf=None,Q=None,Loadprofile_name=None):
                                                            single_phase_inverter_topology=single_phase_inverter_topology,
                                                            modulation_scheme=modulation_scheme,
                                                            M=M,
-                                                           V_dc=V_dc)
+                                                           V_dc=V_dc,
+                                                        N_parallel=N_parallel)
     elif design_control == "switch":
         N_parallel = 1
 
@@ -664,6 +665,7 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
     modulation_scheme = Input_parameters.modulation_scheme
     overshoot_margin_inverter = Input_parameters.overshoot_margin_inverter
     design_control = Input_parameters.design_control
+    N_parallel = Input_parameters.N_parallel
 
     # ----------------------------------------#
     # Max switch limits
@@ -817,7 +819,9 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
                                                            single_phase_inverter_topology=single_phase_inverter_topology,
                                                            modulation_scheme=modulation_scheme,
                                                            M=M,
-                                                           V_dc=V_dc)
+                                                           V_dc=V_dc,
+                                                            N_parallel=N_parallel)
+        print("N_parallel_out",N_parallel)
     elif design_control == "switch":
         N_parallel = 1
 
@@ -1274,7 +1278,6 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
 
     # usage
     df_1 = Calculation_functions_class.load_latest_df("df_1", Location_dataframes)
-
 
     df_3 = pd.DataFrame({
         "S":S,

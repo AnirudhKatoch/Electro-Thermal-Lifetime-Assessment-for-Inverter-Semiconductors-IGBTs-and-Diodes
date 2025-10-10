@@ -174,7 +174,8 @@ class Calculation_functions_class:
                                                            single_phase_inverter_topology,
                                                            modulation_scheme,
                                                            M,
-                                                           V_dc):
+                                                           V_dc,
+                                                           N_parallel=None):
 
 
         """
@@ -230,7 +231,9 @@ class Calculation_functions_class:
         S_max_eff = inverter_phases * Vs * float(max_IGBT_RMS_Current) / margin
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio = np.where(S_max_eff > 0, S / S_max_eff, 0.0)
-        N_parallel = int(np.ceil(np.nanmax(ratio)))
+        if N_parallel == None:
+            N_parallel = int(np.ceil(np.nanmax(ratio)))
+
 
         if N_parallel < 1:
             N_parallel = 1
