@@ -1,0 +1,33 @@
+# Git ignore rules 
+# Ignore large data files (dataframes)
+*.csv
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.npy
+*.npz
+*.mat
+
+# Ignore output and generated folders
+Figures/
+results/
+output/
+logs/
+*.log
+
+# Ignore virtual environments and IDE configs
+.venv/
+env/
+__pycache__/
+.ipynb_checkpoints/
+.idea/
+.vscode/
+build/
+dist/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
