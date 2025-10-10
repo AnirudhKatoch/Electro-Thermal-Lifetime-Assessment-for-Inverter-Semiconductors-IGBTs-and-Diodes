@@ -87,6 +87,7 @@ class Calculation_functions_class:
                 )
 
         '''
+
         for i in range(len(pf)):
             if pf[i] == 0:
                 P[i] = 0
@@ -106,6 +107,7 @@ class Calculation_functions_class:
                     phi[i] = np.arccos(abs(pf[i]))
                     Q[i] = np.sqrt(S[i] ** 2 - P[i] ** 2)
         '''
+
 
         # masks
         m0 = pf == 0  # zero power factor
@@ -150,6 +152,13 @@ class Calculation_functions_class:
         idx_mnz = np.where(mnz)[0]
         Q[idx_mnz[mneg[mnz]]] = -root[mneg[mnz]]
         Q[idx_mnz[mpos[mnz]]] = root[mpos[mnz]]
+
+        #z = (Is == 0)
+        #print("Any Is==0? ", np.any(z))
+        #if np.any(z):
+        #    i = np.flatnonzero(z)[0]
+        #    print(f"sample {i}: P={P[i]}, Q={Q[i]}, pf={pf[i]}, Vs={Vs[i]}")
+        
 
         return S, Is, phi, P, Q, Vs
 
@@ -255,7 +264,26 @@ class Calculation_functions_class:
                     f"Invalid input: AC phase RMS voltage exceeds the theoretical limit "
                     f"Vs must not be greater than {np.max(Vs_theoretical)}."
                 )
-
+        '''
+        for i in range(len(pf)):
+            if pf[i] == 0:
+                P[i] = 0
+                S[i] = np.sqrt(P[i]**2 + Q[i]**2)
+                Is[i] = S[i] / Vs[i]
+                if S[i] == 0:
+                    phi[i] = 0
+                else:
+                    phi[i] = np.pi/2 if Q[i] > 0 else -np.pi/2
+            else:
+                S[i] = P[i] / abs(pf[i])
+                Is[i] = S[i] / Vs[i]
+                if pf[i] < 0:  # inductive
+                    phi[i] = -np.arccos(abs(pf[i]))
+                    Q[i] = - np.sqrt(S[i] ** 2 - P[i] ** 2)
+                else:          # capacitive
+                    phi[i] = np.arccos(abs(pf[i]))
+                    Q[i] = np.sqrt(S[i] ** 2 - P[i] ** 2)
+        '''
         # masks
         m0 = pf == 0  # zero power factor
         mneg = pf < 0  # inductive
@@ -336,10 +364,10 @@ class Calculation_functions_class:
         #is_inverter = np.sqrt(2) * Is * np.sin(omega * t)
 
         sqrt2 = np.sqrt(2.0)
-        vs_inverter = ne.evaluate("sqrt2 * Vs * sin(omega * t + phi)",
-                                  local_dict=dict(sqrt2=sqrt2,Vs=Vs,omega=omega,t=t,phi=phi),)
-        is_inverter = ne.evaluate("sqrt2 * Is * sin(omega * t)",
-                                  local_dict=dict(sqrt2=sqrt2,Is=Is,omega=omega,t=t),)
+        vs_inverter = ne.evaluate("sqrt2 * Vs * sin(omega * t )",
+                                  local_dict=dict(sqrt2=sqrt2,Vs=Vs,omega=omega,t=t),)
+        is_inverter = ne.evaluate("sqrt2 * Is * sin(omega * t + phi)",
+                                  local_dict=dict(sqrt2=sqrt2,Is=Is,omega=omega,t=t,phi=phi),)
 
         return vs_inverter, is_inverter
 
@@ -1467,7 +1495,7 @@ class Calculation_functions_class:
         return sample_rate_hz
 
     @staticmethod
-    def downsample_arrays_df_2(group_size, time_period_df2,TjI_mean, TjD_mean,TjI_delta, TjD_delta,Nf_I, Nf_D):
+    def downsample_arrays_df_2(group_size, time_period_df2,TjI_mean, TjD_mean,TjI_delta, TjD_delta,Nf_I, Nf_D,t_cycle_heat_I,t_cycle_heat_D):
 
         n = len(TjI_mean)
         n_blocks = (n + group_size - 1) // group_size  # ceil division
@@ -1482,6 +1510,8 @@ class Calculation_functions_class:
             TjD_delta = np.concatenate([TjD_delta, pad])
             Nf_I = np.concatenate([Nf_I, pad])
             Nf_D = np.concatenate([Nf_D, pad])
+            t_cycle_heat_I = np.concatenate([t_cycle_heat_I, pad])
+            t_cycle_heat_D = np.concatenate([t_cycle_heat_D, pad])
 
         # reshape and take nanmean over axis=1
         def block_mean(arr):
@@ -1493,11 +1523,13 @@ class Calculation_functions_class:
         TjD_delta_ds = block_mean(TjD_delta)
         Nf_I_ds = block_mean(Nf_I)
         Nf_D_ds = block_mean(Nf_D)
+        t_cycle_heat_I_ds = block_mean(t_cycle_heat_I)
+        t_cycle_heat_D_ds = block_mean(t_cycle_heat_D)
 
         # take first of each 50-sample block for time
         time_period_df2_ds = time_period_df2[::group_size]
 
-        return (time_period_df2_ds, TjI_mean_ds, TjD_mean_ds,TjI_delta_ds, TjD_delta_ds, Nf_I_ds, Nf_D_ds)
+        return (time_period_df2_ds, TjI_mean_ds, TjD_mean_ds,TjI_delta_ds, TjD_delta_ds, Nf_I_ds, Nf_D_ds,t_cycle_heat_I_ds,t_cycle_heat_D_ds)
 
     @staticmethod
     def f_32( x):

@@ -122,10 +122,15 @@ class Plotting_class:
         t_end = df_1["time_s"].max() - 0.02 + df_2_new["dt"].iloc[0]
 
 
+        #t_start = df_1["time_s"].min()
+        #t_end = df_1["time_s"].max()
+
 
         df_slice = df_1[(df_1["time_s"] >= t_start) & (df_1["time_s"] <= t_end)].copy()
         # Shift time so it starts at 0
         df_slice["time_shifted"] = df_slice["time_s"] - df_slice["time_s"].iloc[0]
+
+        del df_1
 
 
         # -------------------------------------------------
@@ -376,7 +381,7 @@ class Plotting_class:
         plt.savefig(f"{Location_plots}/16_inverter_dc_voltage.png")
         plt.close(fig16)
 
-        '''
+
         # -------------------------------------------------
         # Figure 17: IGBT and Diode heat cycles
         # -------------------------------------------------
@@ -392,7 +397,7 @@ class Plotting_class:
         ax17.grid(True)
         plt.savefig(f"{Location_plots}/17_IGBT_and_Diode_heat_cycles.png")
         plt.close(fig17)
-        '''
+
 
 
         # -------------------------------------------------
