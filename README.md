@@ -1,3 +1,6 @@
+# Prepare a documentation to make this whole thing better (Right it is just what I think I did)
+
+
 # Electro-Thermal Lifetime Assessment for Inverter Semiconductors (IGBTs and Diodes)
 
 ### Author  
@@ -30,7 +33,7 @@ This work builds on the following two foundational studies:
 
 2. **Yunting Liu et al. (2020)** — *Aging Effect Analysis of PV Inverter Semiconductors for Ancillary Services Support*,  
    *IEEE Open Journal of Industry Applications*.  
-   → Provides the electro-thermal coupling model for PV inverters under reactive power operation and defines how temperature swings relate to inverter control and mission profiles.
+   → Provides the electro-thermal coupling model for inverters under reactive power operation and defines how temperature swings relate to inverter control and mission profiles.
 
 
 Together, these studies form the **scientific backbone** of this Python implementation.
@@ -47,20 +50,12 @@ The model estimates **semiconductor lifetime degradation** in two main stages:
 - Implements temperature-dependent behavior using device data and ambient conditions.
 
 ### 2️⃣ Lifetime Estimation  
-- Uses **Scheuermann’s power cycling lifetime model** as discussed in  **U. Scheuermann et al. (2014)**  which is updated LESIT model. 
+- Uses **Scheuermann’s power cycling lifetime model** as discussed in  **U. Scheuermann et al. (2014)**  which is an updated LESIT model. 
 
 
 ## 🧩 Repository Structure  
 
-Electro-Thermal-Lifetime-Assessment/
-│
-├── data/ # Input mission profiles and inverter parameters
-├── models/ # Python modules for electro-thermal & lifetime modeling
-├── results/ # Output figures and computed lifetimes
-├── notebooks/ # Example Jupyter notebooks for analysis
-├── requirements.txt # Python dependencies
-├── LICENSE
-└── README.md
+- **Add an image here**
 
 ---
 
