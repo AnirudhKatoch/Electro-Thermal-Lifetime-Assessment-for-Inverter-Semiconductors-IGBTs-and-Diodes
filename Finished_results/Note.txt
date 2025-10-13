@@ -1,0 +1,22 @@
+Remeber these final results
+
+one is familie plots we on a single IGBT and Diode, we can ignore them.
+
+The another results are alle so alle load profiles which are added up and then multiplied by 50 cause so we have 50 switches in parallel cause I want to show a inverter.
+
+Now the last  number which is 1,1.5 and 2 which just multiplied the total load profiles with these factors and also clipping it to the max value so that max IGBT
+does not get above 11500.
+
+But as factor is bigger hence the life reduction can be bigger. We can show factor 2 results are the final results in the paper and build a economical model 
+around it.
+
+Other than we  can carry out simple constant power simulation to show how different shares of reactive power effect the life of IGBT and Diode.
+The S remains at rated power and the porportion of P and Q from min to max.
+Somehow add this to different values of S.
+
+So S can be from min to max where max is rated and min is zero.between 10 different points so 0.1 S, 0.2 S to 1.0 S, and for each of those S values give be 
+different proportion of P and Q from min max so with this you will be able to show whole range of switch life shown and prove it this 
+is how actual life of Inverter works.
+
+Then in paper we can show the final results which I discussed above (Factor 2) and then we are done.
+
