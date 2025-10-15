@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="6cm"
+   height="17.5cm"
+   viewBox="0 0 60 175"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   sodipodi:docname="mother_function_architecture.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="cm"
+     showgrid="true"
+     inkscape:zoom="2.0334082"
+     inkscape:cx="127.61825"
+     inkscape:cy="75.98081"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <inkscape:grid
+       id="grid1"
+       units="cm"
+       originx="0"
+       originy="0"
+       spacingx="0.99999998"
+       spacingy="1"
+       empcolor="#0099e5"
+       empopacity="0.30196078"
+       color="#0099e5"
+       opacity="0.14901961"
+       empspacing="5"
+       enabled="true"
+       visible="true" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <marker
+       style="overflow:visible"
+       id="Triangle"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path135" />
+    </marker>
+    <rect
+       x="251.07162"
+       y="132.14296"
+       width="293.49646"
+       height="30.601528"
+       id="rect3" />
+    <marker
+       style="overflow:visible"
+       id="Triangle-0"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path135-0" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Triangle-0-1"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path135-0-7" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Triangle-0-1-5"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path135-0-7-9" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Triangle-0-1-5-6"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path135-0-7-9-6" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Triangle-0-1-5-6-2"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path135-0-7-9-6-5" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Triangle-0-1-5-6-3"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path135-0-7-9-6-51" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Triangle-0-1-5-6-0"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Triangle arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.5)"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:context-stroke;stroke-width:1pt"
+         d="M 5.77,0 -2.88,5 V -5 Z"
+         id="path135-0-7-9-6-6" />
+    </marker>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1"
+       width="49.999996"
+       height="15"
+       x="5.0011053"
+       y="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="17.103661"
+       y="8.2534914"
+       id="text1"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="17.103661"
+         y="8.2534914">Input parameters </tspan><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="17.103661"
+         y="12.127341"
+         id="tspan2" /></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-1"
+       width="49.931465"
+       height="15.074913"
+       x="5.0700002"
+       y="20" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.1807px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="14.181365"
+       y="28.642427"
+       id="text1-2-1"
+       transform="scale(0.9968281,1.003182)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.264999"
+         x="14.181365"
+         y="28.642427"
+         id="tspan2-9-8">Compute power flow</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-7"
+       width="50"
+       height="14.999999"
+       x="5"
+       y="40" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.1807px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="16.273994"
+       y="46.603725"
+       id="text1-2-9"
+       transform="scale(0.9968281,1.003182)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.264999"
+         x="16.273994"
+         y="46.603725"
+         id="tspan2-9-9">Check max power </tspan><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.264999"
+         x="16.273994"
+         y="50.579601"
+         id="tspan7">and current limits</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-5"
+       width="50"
+       height="15"
+       x="5"
+       y="60" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="10.329736"
+       y="69.09774"
+       id="text1-2-0"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="10.329736"
+         y="69.09774"
+         id="tspan2-9-00">Run electro–thermal model</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-9"
+       width="50"
+       height="15"
+       x="5"
+       y="80" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="7.731988"
+       y="87.742226"
+       id="text1-2-3"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="7.731988"
+         y="87.742226"
+         id="tspan6">Extract temperature statistics</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-18"
+       width="50"
+       height="15"
+       x="5"
+       y="100" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="14.019344"
+       y="106.98088"
+       id="text1-2-4"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="14.019344"
+         y="106.98088"
+         id="tspan2-9-3">Life cycles calculations</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-9"
+       width="50"
+       height="15"
+       x="5"
+       y="120" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="14.475516"
+       y="126.78808"
+       id="text1-1"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="14.475516"
+         y="126.78808"
+         id="tspan2-5">Aggregate to lifetime</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-7"
+       width="50"
+       height="15"
+       x="5"
+       y="140" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="14.197635"
+       y="145.12097"
+       id="text1-6"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="14.197635"
+         y="145.12097"
+         id="tspan2-1">Monte carlo-based</tspan><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="14.197635"
+         y="148.99483"
+         id="tspan4">reliability assessment</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-97"
+       width="50"
+       height="15"
+       x="5"
+       y="160" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="17.710674"
+       y="164.60657"
+       id="text1-3"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="17.710674"
+         y="164.60657"
+         id="tspan2-2">Saving results </tspan><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="17.710674"
+         y="168.48042"
+         id="tspan9">and visualizing</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.25496156,0,0,0.26159533,-65.536016,-29.659587)"
+       id="text3"
+       style="text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect3);display:inline;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:1.0261" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.26;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle)"
+       d="m 29.995377,15 v 4.057982"
+       id="path7"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.26;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle-0)"
+       d="m 30.000001,35.000002 v 4.057982"
+       id="path7-6"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.26;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle-0-1)"
+       d="m 30.000201,55.000003 v 4.057982"
+       id="path7-6-7"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.26;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle-0-1-5)"
+       d="m 30.000001,75.000004 v 4.057982"
+       id="path7-6-7-1"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.26;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle-0-1-5-6)"
+       d="M 30.0002,94.999998 V 99.07325"
+       id="path7-6-7-1-8"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.26;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle-0-1-5-6-2)"
+       d="m 30.0002,115 v 4.07325"
+       id="path7-6-7-1-8-4"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.26;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle-0-1-5-6-3)"
+       d="m 30.0002,135 v 4.07324"
+       id="path7-6-7-1-8-1"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.26;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle-0-1-5-6-0)"
+       d="m 30.0002,155 v 4.07324"
+       id="path7-6-7-1-8-9"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+  </g>
+</svg>

@@ -12,7 +12,7 @@ class Input_parameters_class:
 
         self.chunk_seconds = int(86400)
 
-        self.design_control = "inverter" # "inverter" or "switch" , choose between two on what is the designing process,
+        self.design_control = "switch" # "inverter" or "switch" , choose between two on what is the designing process,
         self.N_parallel = 50
         # In "switch" you can directly give in power values for the switch
         # In "inverter" if your power requirements are above the rated power of the switch the system will automatically put switches in parallel to match the power requirements.
@@ -34,7 +34,7 @@ class Input_parameters_class:
         self.f = 50                                      # [Hz] Grid frequency
         self.M = 1.034                                   # [-] Inverter modulation index # Modulation cannot be above 1 as model does not take into account. Here I have done it barely to make the system follow physics law.
         self.Tamb = 298.15                               # [K] Ambient Temperature
-        self.dt = 0.002                                  # [s] Simulation timestep (1 ms)
+        self.dt = 0.002                                  # [s] Simulation timestep (2 ms)
 
         if (self.pf[0] == 0 and self.Q[0] == 0):
             raise ValueError(
@@ -213,6 +213,7 @@ class Input_parameters_class:
     @property
     def Time_period(self): # [-]  Number of seconds in simulation (length of pf array)
         return len(self.pf)
+
     @property
     def Nsec(self):        # [-] Number of simulation steps per second     (with dt = 1 ms → 1000 steps per second)
         return int(round(1.0 / self.dt))
@@ -222,7 +223,7 @@ class Input_parameters_class:
         return 1.0 / self.f
 
     @property
-    def Ngrid(self):       # [-] Number of simulation steps per grid cycle (at f = 50 Hz and dt = 1 ms → 20 steps per cycle)
+    def Ngrid(self):       # [-] Number of simulation steps per grid cycle (at f = 50 Hz and dt = 2 ms → 10 steps per cycle)
         return int(round( self.Tgrid / self.dt))
 
 

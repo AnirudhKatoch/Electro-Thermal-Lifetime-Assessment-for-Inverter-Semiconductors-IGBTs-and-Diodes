@@ -11,6 +11,9 @@ if __name__ == "__main__":
 
     df = pd.read_parquet(f"Load_profiles/{args.profile}.parquet", engine="pyarrow")
     P = df["P"].to_numpy(dtype=np.float64)
+
+    P = np.full(len(P), 34500*0.75, dtype=float)
+
     #P = P[:86400]
     pf = np.full(len(P), 1, dtype=float)
     Q  = np.full(len(P), 10, dtype=float)

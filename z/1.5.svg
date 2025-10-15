@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="6cm"
+   height="25cm"
+   viewBox="0 0 60 250"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   sodipodi:docname="1.5.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="cm"
+     showgrid="true"
+     inkscape:zoom="1.4378367"
+     inkscape:cx="242.37801"
+     inkscape:cy="508.7504"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <inkscape:grid
+       id="grid1"
+       units="cm"
+       originx="0"
+       originy="0"
+       spacingx="0.99999998"
+       spacingy="1"
+       empcolor="#0099e5"
+       empopacity="0.30196078"
+       color="#0099e5"
+       opacity="0.14901961"
+       empspacing="5"
+       enabled="true"
+       visible="true" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <rect
+       x="251.07162"
+       y="132.14296"
+       width="293.49646"
+       height="30.601528"
+       id="rect3" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1"
+       width="49.999996"
+       height="15"
+       x="5.0011053"
+       y="5" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="16.378761"
+       y="12.804313"
+       id="text1"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         id="tspan1"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="16.378761"
+         y="12.804313">Input parameters </tspan><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="16.378761"
+         y="16.678164"
+         id="tspan2" /></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-1"
+       width="49.931465"
+       height="15.074913"
+       x="5.0696402"
+       y="29.999994" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.1807px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="15.302087"
+       y="38.16975"
+       id="text1-2-1"
+       transform="scale(0.9968281,1.003182)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.264999"
+         x="15.302087"
+         y="38.16975"
+         id="tspan2-9-8">Compute power flow</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-7"
+       width="50"
+       height="15"
+       x="5.0011053"
+       y="55" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.1807px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="13.021888"
+       y="61.910587"
+       id="text1-2-9"
+       transform="scale(0.9968281,1.003182)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.264999"
+         x="13.021888"
+         y="61.910587"
+         id="tspan2-9-9">Check max power and </tspan><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.264999"
+         x="13.021888"
+         y="65.886459"
+         id="tspan7">current limits</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-5"
+       width="50"
+       height="15"
+       x="5.0011053"
+       y="80" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.175px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="9.6791449"
+       y="88.801094"
+       id="text1-2-0"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="9.6791449"
+         y="88.801094"
+         id="tspan2-9-00">Run electro–thermal model</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-9"
+       width="50"
+       height="15"
+       x="5"
+       y="105" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="15.394793"
+       y="110.87911"
+       id="text1-2-3"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="15.394793"
+         y="110.87911"
+         id="tspan5">Extract temperature </tspan><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="15.394793"
+         y="114.75296"
+         id="tspan6">statistics</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-89-18"
+       width="50"
+       height="15"
+       x="5"
+       y="130" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="14.896718"
+       y="136.65622"
+       id="text1-2-4"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="14.896718"
+         y="136.65622"
+         id="tspan2-9-3">Life cycles calculations</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-9"
+       width="50"
+       height="14.830602"
+       x="5"
+       y="155" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="16.43927"
+       y="160.40343"
+       id="text1-1"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="16.43927"
+         y="160.40343"
+         id="tspan2-5">Aggregate to lifetime</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-7"
+       width="48.181713"
+       height="14.830602"
+       x="5.553153"
+       y="180.13248" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="14.143042"
+       y="184.26913"
+       id="text1-6"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="14.143042"
+         y="184.26913"
+         id="tspan2-1">Monte carlo-based</tspan><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="14.143042"
+         y="188.14299"
+         id="tspan4"> reliability assessment</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-97"
+       width="48.181713"
+       height="14.830602"
+       x="5.2800746"
+       y="206.10292" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="16.021828"
+       y="211.7043"
+       id="text1-3"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="16.021828"
+         y="211.7043"
+         id="tspan2-2">Save Dataframes</tspan></text>
+    <rect
+       style="fill:#fff400;fill-rule:evenodd;stroke-width:0.264999"
+       id="rect1-5"
+       width="48.181713"
+       height="14.830602"
+       x="4.946609"
+       y="230.19359" />
+    <text
+       xml:space="preserve"
+       style="font-size:3.09908px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:0.264999"
+       x="15.684053"
+       y="235.48753"
+       id="text1-7"
+       transform="scale(0.98723914,1.0129258)"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke-width:0.265"
+         x="15.684053"
+         y="235.48753"
+         id="tspan2-4">Visualize results</tspan></text>
+    <text
+       xml:space="preserve"
+       transform="matrix(0.25496156,0,0,0.26159533,-65.536016,-24.659587)"
+       id="text3"
+       style="text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect3);fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke-width:1.0261" />
+  </g>
+</svg>

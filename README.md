@@ -1,9 +1,11 @@
-# Prepare a documentation to make this whole thing better (Right it is just what I think I did)
+# ⚡ Electro-Thermal Lifetime Assessment for Inverter Semiconductors (IGBTs and Diodes)
 
+A comprehensive **Python-based electro–thermal lifetime modeling framework** for inverter semiconductor devices.  
+It quantifies semiconductor degradation and reliability under realistic mission profiles using coupled electrical–thermal modeling and empirical lifetime estimation (LESIT model).
 
-# Electro-Thermal Lifetime Assessment for Inverter Semiconductors (IGBTs and Diodes)
+---
 
-### Author  
+## 👤 Author
 **Anirudh Katoch**  
 PhD Candidate, Technical University of Munich (TUM)  
 Chair of Renewable and Sustainable Energy Systems (ENS), CoSES Team  
@@ -12,62 +14,53 @@ Supervisor: **Prof. Thomas Hamacher**
 
 ---
 
-## 🌍 Project Overview  
+## 🧭 Overview
+This framework estimates **IGBT and diode lifetime degradation** in grid-forming and grid-following inverters under various loading and power factor conditions.
 
-This repository presents a **Python-based framework** for **electro-thermal lifetime assessment** of inverter semiconductor devices  primarily **IGBTs** and **diodes** under realistic mission profiles.  
-The model evaluates the thermal behavior, degradation and lifetime of  grid forming inverters.  (Can also be used for other kinds of inverters.)  
-
-The methodology combines:
-- **Thermal and electrical loss modeling** from inverter operation, and  
-- **Empirical power cycling lifetime models** derived from laboratory studies.  
-
----
-
-## 📚 Research Basis  
-
-This work builds on the following two foundational studies:
-
-1. **U. Scheuermann et al. (2014)** — *Power Cycling Testing with Different Load Pulse Durations*,  
-   *Proceedings of PEMD 2014*.  
-   → Introduces the empirical **lifetime model** for IGBTs and diodes based on power cycling tests, incorporating the effect of temperature swing, mean temperature, pulse duration, and device parameters.
-
-2. **Yunting Liu et al. (2020)** — *Aging Effect Analysis of PV Inverter Semiconductors for Ancillary Services Support*,  
-   *IEEE Open Journal of Industry Applications*.  
-   → Provides the electro-thermal coupling model for inverters under reactive power operation and defines how temperature swings relate to inverter control and mission profiles.
-
-
-Together, these studies form the **scientific backbone** of this Python implementation.
+The model:
+- Computes **electrical losses** (switching and conduction) per cycle.  
+- Simulates **thermal behavior** using a Foster RC network.  
+- Applies **LESIT-based empirical lifetime models** combined with Miner’s damage accumulation.  
+- Includes **Monte Carlo–based uncertainty propagation** for probabilistic reliability estimation.
 
 ---
 
-## ⚙️ Model Description  
+## 🧩 Core Modules
+| File | Function |
+|------|-----------|
+| `Input_parameters_file.py` | Defines all physical, electrical, and thermal input parameters. |
+| `Calculation_functions_file.py` | Contains all numerical models — power flow, loss models, lifetime equations. |
+| `Electro_thermal_behavior_file.py` | Implements the Foster network for electro–thermal coupling. |
+| `mother_function.py` | Orchestrates full workflow — from mission profile to lifetime results. |
+| `Dataframe_saving_file.py` | Stores results as structured DataFrames in `/Finished_results/`. |
+| `Plotting_file.py` | Generates figures for losses, temperature swings, and life consumption. |
 
-The model estimates **semiconductor lifetime degradation** in two main stages:
+<p align="center">
+  <img src="z/Model%20architecture.svg" alt="Model Architecture Diagram" width="800">
+</p>
 
-### 1️⃣ Thermal-Electrical Modeling  
-- Calculates semiconductor losses (conduction + switching) from inverter operating conditions.  
-- Derives **junction temperature (Tj)** and **temperature swing (ΔTj)** using thermal impedance networks and mission profiles.  
-- Implements temperature-dependent behavior using device data and ambient conditions.
+*Figure: Conceptual architecture of the electro–thermal lifetime assessment framework showing the coupling between electrical, thermal, and reliability domains.*
 
-### 2️⃣ Lifetime Estimation  
-- Uses **Scheuermann’s power cycling lifetime model** as discussed in  **U. Scheuermann et al. (2014)**  which is an updated LESIT model. 
-
-
-## 🧩 Repository Structure  
-
-- **Add an image here**
 
 ---
 
-## 💻 Environment Setup  
+## ⚙️ Execution and Usage
 
-Developed and tested with **Python 3.13.7**.
+### Requirements
+- **Python 3.13+**
+- Dependencies listed in `requirements.txt`
 
-To set up the environment and install dependencies:
-
+### Run Steps
 ```bash
-python -m venv venv
-venv\Scripts\activate     # (on Windows)
-# or: source venv/bin/activate (on macOS/Linux)
+# 1. Edit input parameters
+nano Input_parameters_file.py
 
-pip install -r requirements.txt
+# 2. (Optional) Add or modify mission profile
+ls Load_profiles/
+
+# 3. Run the model
+python main.py
+
+# 4. Outputs
+# Results → /Finished_results/
+# Figures → /Figures/

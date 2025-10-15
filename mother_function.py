@@ -825,6 +825,10 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
     elif design_control == "switch":
         N_parallel = 1
 
+    #----------------------------------------#
+    # Checking max power flow values
+    #----------------------------------------#
+
     Calculation_functions_class.check_max_apparent_power_switch(S=S,Vs=Vs,max_IGBT_RMS_Current=max_IGBT_RMS_Current,inverter_phases=inverter_phases)
 
     #----------------------------------------#
@@ -841,10 +845,6 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
     r_D     = np.ascontiguousarray(r_D,     dtype=np.float64)
     r_paste = np.ascontiguousarray(r_paste, dtype=np.float64)
     r_sink  = np.ascontiguousarray(r_sink,  dtype=np.float64)
-
-    #----------------------------------------#
-    # Temperature calculations
-    #----------------------------------------#
 
     Tbr_I = np.zeros_like(r_I, dtype=float)     # [K] Temperature rise contributions of each Foster RC branch for IGBT junction → case.
     Tbr_D = np.zeros_like(r_D, dtype=float)     # [K] Temperature rise contributions of each Foster RC branch for diode junction → case.
@@ -1077,8 +1077,8 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
 
         Calculation_functions_class.free_ram_now()
 
-        #from Electro_thermal_behavior_file import _build_kernel_one_second_cached
-        #print(_build_kernel_one_second_cached.cache_info())
+        from Electro_thermal_behavior_file import _build_kernel_one_second_cached
+        print(_build_kernel_one_second_cached.cache_info())
 
         Nf_I = Calculation_functions_class.Cycles_to_failure(A=A,
                                                              alpha=alpha,
@@ -1119,7 +1119,6 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
         Nf_D = Nf_D.reshape(-1, f).mean(axis=1)
         t_cycle_heat_I = t_cycle_heat_I.reshape(-1, f).mean(axis=1)
         t_cycle_heat_D = t_cycle_heat_D.reshape(-1, f).mean(axis=1)
-
 
 
         df_2 = pd.DataFrame({

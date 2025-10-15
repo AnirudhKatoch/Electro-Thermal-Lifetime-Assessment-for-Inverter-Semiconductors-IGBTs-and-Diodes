@@ -208,6 +208,8 @@ class Calculation_functions_class:
             Modulation index [-].
         V_dc : array
             DC-side phase voltage per sec [V].
+        N_parallel:
+            Number of switches in parallel
 
         Returns
         -------
@@ -733,7 +735,6 @@ class Calculation_functions_class:
         return V_CE
 
     @staticmethod
-
     def check_igbt_diode_limits(
             is_I, is_D, T_j_I, T_j_D,
             max_IGBT_RMS_Current, max_IGBT_peak_Current,
