@@ -36,10 +36,10 @@ The model:
 | `Plotting_file.py` | Generates figures for losses, temperature swings, and life consumption. |
 
 <p align="center">
-  <img src="z/Model%20architecture.svg" alt="Model Architecture Diagram" width="800">
+  <img src="z/Model_architecture.svg" alt="Model Architecture Diagram" width="800">
 </p>
 
-*Figure: Conceptual architecture of the electro–thermal lifetime assessment framework showing the coupling between electrical, thermal, and reliability domains.*
+*Figure: Conceptual architecture of the electro–thermal lifetime assessment framework showing the coupling between different modules.*
 
 
 ---
@@ -50,17 +50,3 @@ The model:
 - **Python 3.13+**
 - Dependencies listed in `requirements.txt`
 
-### Run Steps
-```bash
-# 1. Edit input parameters
-nano Input_parameters_file.py
-
-# 2. (Optional) Add or modify mission profile
-ls Load_profiles/
-
-# 3. Run the model
-python main.py
-
-# 4. Outputs
-# Results → /Finished_results/
-# Figures → /Figures/
