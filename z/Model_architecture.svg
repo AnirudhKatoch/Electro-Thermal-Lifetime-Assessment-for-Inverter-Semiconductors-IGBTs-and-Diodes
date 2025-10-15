@@ -8,7 +8,7 @@
    version="1.1"
    id="svg1"
    inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
-   sodipodi:docname="Model architecture.svg"
+   sodipodi:docname="Model_architecture.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -25,8 +25,8 @@
      inkscape:document-units="cm"
      showgrid="true"
      inkscape:zoom="2.0334082"
-     inkscape:cx="324.33233"
-     inkscape:cy="174.82963"
+     inkscape:cx="324.82411"
+     inkscape:cy="214.17244"
      inkscape:window-width="1920"
      inkscape:window-height="1009"
      inkscape:window-x="-8"
@@ -274,31 +274,31 @@
          x="66.69796"
          y="63.700554">Dataframe_saving_file</tspan></text>
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-mid:url(#Triangle);marker-end:url(#Triangle)"
+       style="fill:none;fill-rule:evenodd;stroke:#ff0000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-mid:url(#Triangle);marker-end:url(#Triangle)"
        d="m 84.915587,19.980018 v 9.025287"
        id="path8"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264585px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#Triangle-0);marker-mid:url(#Triangle-9);marker-end:url(#Triangle-9)"
+       style="fill:none;fill-rule:evenodd;stroke:#ff0000;stroke-width:0.264585px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#Triangle-0);marker-mid:url(#Triangle-9);marker-end:url(#Triangle-9)"
        d="m 106.00785,37.55628 h 7.99969"
        id="path10"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-mid:url(#Triangle-0);marker-end:url(#Triangle-0)"
+       style="fill:none;fill-rule:evenodd;stroke:#ff0000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-mid:url(#Triangle-0);marker-end:url(#Triangle-0)"
        d="m 85.033655,44.989861 v 9.025287"
        id="path8-6"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-mid:url(#Triangle-9);marker-end:url(#Triangle-9)"
+       style="fill:none;fill-rule:evenodd;stroke:#ff0000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-mid:url(#Triangle-9);marker-end:url(#Triangle-9)"
        d="m 84.953087,70.010392 v 9.025287"
        id="path8-1"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264585px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#Triangle-0-9);marker-mid:url(#Triangle-9-4);marker-end:url(#Triangle-9-4)"
+       style="fill:none;fill-rule:evenodd;stroke:#ff0000;stroke-width:0.264585px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#Triangle-0-9);marker-mid:url(#Triangle-9-4);marker-end:url(#Triangle-9-4)"
        d="m 56.003321,37.489457 h 7.99969"
        id="path10-6"
        inkscape:connector-type="polyline"
