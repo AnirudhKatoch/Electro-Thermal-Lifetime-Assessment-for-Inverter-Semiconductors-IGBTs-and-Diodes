@@ -39,7 +39,8 @@ The model:
   <img src="z/Model_architecture.svg" alt="Model Architecture Diagram" width="800">
 </p>
 
-*Figure: Conceptual architecture of the electro–thermal lifetime assessment framework showing the coupling between different modules.*
+*Figure: Conceptual architecture of the electro–thermal lifetime assessment framework showing the coupling between
+different modules. For more details check **Model documentation.pdf***
 
 
 ---
