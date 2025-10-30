@@ -13,7 +13,7 @@ if __name__ == "__main__":
     P = df["P"].to_numpy(dtype=np.float64)
     pf = df["pf"].to_numpy(dtype=np.float64)
     Q = df["Q"].to_numpy(dtype=np.float64)
-    Loadprofile_name = args.profile
+    Loadprofile_name = f"{args.profile}_active_and_reactive"
 
     del df
 

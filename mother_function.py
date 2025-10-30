@@ -147,7 +147,6 @@ def main_1(P=None,pf=None,Q=None,Loadprofile_name=None):
     'main'
     '################################################################################################################################################################'
 
-
     #----------------------------------------#
     # Checking collector–emitter voltage
     #----------------------------------------#
@@ -201,7 +200,6 @@ def main_1(P=None,pf=None,Q=None,Loadprofile_name=None):
     r_D     = np.ascontiguousarray(r_D,     dtype=np.float64)
     r_paste = np.ascontiguousarray(r_paste, dtype=np.float64)
     r_sink  = np.ascontiguousarray(r_sink,  dtype=np.float64)
-
 
     #----------------------------------------#
     # Temperature calculations
@@ -821,7 +819,7 @@ def main_2(P=None,pf=None,Q=None,Loadprofile_name=None):
                                                            M=M,
                                                            V_dc=V_dc,
                                                             N_parallel=N_parallel)
-        print("N_parallel_out",N_parallel)
+        #print("N_parallel_out",N_parallel)
     elif design_control == "switch":
         N_parallel = 1
 

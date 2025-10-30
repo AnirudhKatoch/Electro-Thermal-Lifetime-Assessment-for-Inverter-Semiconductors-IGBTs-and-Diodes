@@ -15,5 +15,6 @@ def run_once(entry_script, profile):
 if __name__ == "__main__":
 
 
-    run_once("main_2_entry_active.py", "alle_main_2_1_sec_inverter_1")
+    run_once("main_2_entry_active.py", "alle_main_2_1_sec_inverter_2.5")
+    run_once("main_2_entry_reactive.py", "alle_main_2_1_sec_inverter_2.5")
 
